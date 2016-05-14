@@ -6,7 +6,7 @@
 
 
 # Install packages in bulk
-# install.packages(c("GGally", "psych", "vcd", "ggplot2", "scales", "beanplot", "ggExtra", "likert", "tolerance", "gridExtra", "VIM", "VIMGUI", "simpleboot", "segmented", "quantreg", "strucchange", "reshape2", "dplyr", "qcc", "htmlwidgets", "dygraphs", "DT", "hexbin", "forecast", "cdcfluview", "httr", "zoo"))
+# install.packages(c("GGally", "psych", "vcd", "ggplot2", "scales", "beanplot", "ggExtra", "likert", "tolerance", "gridExtra", "VIM", "VIMGUI", "simpleboot", "segmented", "quantreg", "strucchange", "reshape2", "dplyr", "qcc", "htmlwidgets", "dygraphs", "DT", "hexbin", "forecast", "cdcfluview", "httr", "zoo", "tidyr", "asbio"))
 
 # Get working directory
 getwd()
