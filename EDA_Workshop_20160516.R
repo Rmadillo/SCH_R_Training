@@ -6,7 +6,7 @@
 
 
 # Install packages in bulk
-# install.packages(c("GGally", "psych", "vcd", "ggplot2", "scales", "beanplot", "ggExtra", "likert", "tolerance", "gridExtra", "VIM", "VIMGUI", "simpleboot", "segmented", "quantreg", "strucchange", "reshape2", "dplyr", "qcc", "htmlwidgets", "dygraphs", "DT", "hexbin", "forecast", "cdcfluview", "httr", "zoo", "tidyr", "asbio"))
+#install.packages(c("GGally", "psych", "vcd", "ggplot2", "scales", "beanplot", "ggExtra", "likert", "tolerance", "gridExtra", "VIM", "VIMGUI", "simpleboot", "segmented", "quantreg", "strucchange", "reshape2", "dplyr", "qcc", "htmlwidgets", "dygraphs", "DT", "hexbin", "forecast", "cdcfluview", "httr", "zoo", "tidyr", "asbio","TSA","devtools"))
 
 # Get working directory
 getwd()
@@ -157,31 +157,31 @@ mosaicplot(table(bike_share_daily[,c(8,9,3)]))
 ### Histograms and density plots
 
 ggplot(bike_share_daily, aes(casual)) +
-    geom_histogram()
+  geom_histogram()
 
 ggplot(bike_share_daily, aes(casual)) +
-    geom_histogram(color="black")
+  geom_histogram(color="black")
 
 ggplot(bike_share_daily, aes(casual)) +
-    geom_histogram(color="gray50", fill="blue", alpha=0.4, binwidth=250) +
-    xlab("Casual Use") +
-    theme_bw()
+  geom_histogram(color="gray50", fill="blue", alpha=0.4, binwidth=250) +
+  xlab("Casual Use") +
+  theme_bw()
 
 # check help to see other built-in themes
 ?theme_bw
 
 ggplot(bike_share_daily, aes(casual)) +
-    geom_density(col="blue", fill="blue", alpha=0.4) +
-    xlab("Casual Use") +
-    theme_minimal()
+  geom_density(col="blue", fill="blue", alpha=0.4) +
+  xlab("Casual Use") +
+  theme_minimal()
 
 ggplot(bike_share_daily, aes(casual)) +
-    ylab("density and count") +
-    xlab("Casual Use") +
-    geom_histogram(aes(y=..density..), col="blue", fill="blue", alpha=0.3, binwidth=250) +
-    geom_density(col="blue", fill="blue", alpha=0.2) +
-    theme_bw() +
-    theme(axis.ticks.y = element_blank(), axis.text.y = element_blank())
+  ylab("density and count") +
+  xlab("Casual Use") +
+  geom_histogram(aes(y=..density..), col="blue", fill="blue", alpha=0.3, binwidth=250) +
+  geom_density(col="blue", fill="blue", alpha=0.2) +
+  theme_bw() +
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank())
 
 # Got it how you like it? Save image to working directory
 # Can use 1) "Export" button in Plots tab, or
@@ -190,12 +190,12 @@ ggplot(bike_share_daily, aes(casual)) +
 # Works with all plots
 png("densohisto_1.png", width=10, height=7, units="in", res=300)
 ggplot(bike_share_daily, aes(casual)) +
-    ylab("density and count") +
-    xlab("Casual Use") +
-    geom_histogram(aes(y=..density..), col="blue", fill="blue", alpha=0.3, binwidth=250) +
-    geom_density(col="blue", fill="blue", alpha=0.2) +
-    theme_bw() +
-    theme(axis.ticks.y = element_blank(), axis.text.y = element_blank())
+  ylab("density and count") +
+  xlab("Casual Use") +
+  geom_histogram(aes(y=..density..), col="blue", fill="blue", alpha=0.3, binwidth=250) +
+  geom_density(col="blue", fill="blue", alpha=0.2) +
+  theme_bw() +
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank())
 dev.off()
 
 # Works with ggplots, saves last ggplot created
@@ -207,18 +207,18 @@ ggsave("densohisto_2.png", width=10, height=7, units="in", dpi=300)
 ### Bar and dot plots
 
 ggplot(bike_share_daily, aes(weathersit)) +
-    geom_bar(col="blue", fill="blue", alpha=0.3) +
-    xlab("Weather Pattern") +
-    scale_x_discrete(breaks=c(1, 2, 3), labels=c("Clear", "Cloudy/Rainy", "Stormy")) +
-    theme_bw()
-    
+  geom_bar(col="blue", fill="blue", alpha=0.3) +
+  xlab("Weather Pattern") +
+  scale_x_discrete(breaks=c(1, 2, 3), labels=c("Clear", "Cloudy/Rainy", "Stormy")) +
+  theme_bw()
+
 ggplot(bike_share_daily, aes(x=weathersit, y=..count..)) +
-    geom_bar(stat="count", width=0.01) +
-    geom_point(stat = "count", size=4, pch=21, fill="darkblue") +
-    xlab("Weather Pattern") +
-    scale_x_discrete(breaks=c(1, 2, 3), labels=c("Clear", "Cloudy/Rainy", "Stormy")) +
-    coord_flip() +
-    theme_bw()
+  geom_bar(stat="count", width=0.01) +
+  geom_point(stat = "count", size=4, pch=21, fill="darkblue") +
+  xlab("Weather Pattern") +
+  scale_x_discrete(breaks=c(1, 2, 3), labels=c("Clear", "Cloudy/Rainy", "Stormy")) +
+  coord_flip() +
+  theme_bw()
 
 # Mosaic plots
 
@@ -229,46 +229,46 @@ mosaic(table(bike_share_daily[,c(8,9,3)]))
 ### Plotting multiple univariate distributions with faceting
 
 ggplot(bike_share_daily, aes(casual, fill=season)) +
-    geom_histogram(aes(y = ..density..), alpha=0.2, color="gray50") +
-    geom_density(alpha=0.5, size=0.5) +
-    facet_wrap(~season) +
-    theme_light() +
-    xlab("Daily Bike Use Count") +
-    ylab("") +
-    theme(legend.position="none") +
-    theme(axis.ticks.y = element_blank(), axis.text.y = element_blank(), axis.title = element_text(size=9, face=2, color="gray30"), axis.title.x = element_text(vjust=-0.5))
+  geom_histogram(aes(y = ..density..), alpha=0.2, color="gray50") +
+  geom_density(alpha=0.5, size=0.5) +
+  facet_wrap(~season) +
+  theme_light() +
+  xlab("Daily Bike Use Count") +
+  ylab("") +
+  theme(legend.position="none") +
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank(), axis.title = element_text(size=9, face=2, color="gray30"), axis.title.x = element_text(vjust=-0.5))
 
 ggplot(bike_share_daily, aes(weathersit, fill=season)) +
-    geom_bar(alpha=0.5) +
-    xlab("") +
-    ylab("Number of Days") +
-    scale_x_discrete(breaks=c(1, 2, 3), labels=c("Clear", "Cloudy/Rainy", "Stormy")) +
-    coord_flip() +
-    facet_wrap(~season, ncol=1) +
-    theme_light()
+  geom_bar(alpha=0.5) +
+  xlab("") +
+  ylab("Number of Days") +
+  scale_x_discrete(breaks=c(1, 2, 3), labels=c("Clear", "Cloudy/Rainy", "Stormy")) +
+  coord_flip() +
+  facet_wrap(~season, ncol=1) +
+  theme_light()
 
 ## Plotting bivariate and comparative distributions
 
 ### Double density plots
 
 ggplot(bike_share_daily, aes(casual, fill=workingday, color=workingday)) +
-    geom_density(alpha=0.5) +
-    xlab("Daily Casual Bike Use Count") +
-    ylab("") +
-    scale_fill_discrete(name="Work Day?") +
-    scale_color_discrete(name="Work Day?") +
-    theme(axis.ticks.y = element_blank(), axis.text.y = element_blank(), legend.position="top")
+  geom_density(alpha=0.5) +
+  xlab("Daily Casual Bike Use Count") +
+  ylab("") +
+  scale_fill_discrete(name="Work Day?") +
+  scale_color_discrete(name="Work Day?") +
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank(), legend.position="top")
 
 ### Boxplots
 
 ggplot(bike_share_daily, aes(mnth, casual, fill=workingday)) +
-    xlab("Month") +
-    ylab("Daily Casual Bike Use Count") +
-    geom_boxplot() +
-    theme_minimal() +
-    scale_fill_discrete(name="Work Day?") +
-    scale_color_discrete(name="Work Day?") +
-    theme(legend.position="top")
+  xlab("Month") +
+  ylab("Daily Casual Bike Use Count") +
+  geom_boxplot() +
+  theme_minimal() +
+  scale_fill_discrete(name="Work Day?") +
+  scale_color_discrete(name="Work Day?") +
+  theme(legend.position="top")
 
 ### Beanplots
 
@@ -286,35 +286,35 @@ beanplot(casual ~ mnth, data = bike_share_daily, side="first", overallline="medi
 ### Scatterplots
 
 ggplot(bike_share_daily, aes(x=atemp, y=casual)) +
-    xlab("Daily Mean Normalized Air Temperature") +
-    ylab("Number of Total Casual Bike Uses") +
-    geom_point(col="gray50") +
-    theme_bw()
+  xlab("Daily Mean Normalized Air Temperature") +
+  ylab("Number of Total Casual Bike Uses") +
+  geom_point(col="gray50") +
+  theme_bw()
 
 # scatterplot with density
 ggplot(bike_share_daily, aes(x=atemp, y=casual)) +
-    xlab("Daily Mean Normalized Air Temperature") +
-    ylab("Number of Total Casual Bike Uses") +
-    geom_point(col="gray50") +
-    geom_density2d() +
-    theme_bw()
+  xlab("Daily Mean Normalized Air Temperature") +
+  ylab("Number of Total Casual Bike Uses") +
+  geom_point(col="gray50") +
+  geom_density2d() +
+  theme_bw()
 
 # scatterplot with hexbins (not as useful here)
 ggplot(bike_share_daily, aes(x=atemp, y=casual)) +
-    xlab("Daily Mean Normalized Air Temperature") +
-    ylab("Number of Total Casual Bike Uses") +
-    geom_hex() +
-    theme_bw()
+  xlab("Daily Mean Normalized Air Temperature") +
+  ylab("Number of Total Casual Bike Uses") +
+  geom_hex() +
+  theme_bw()
 
 ### Scatterplots with marginal distributions
 require(ggExtra)
 
 # create ggplot object
 bike_air_temp = ggplot(bike_share_daily, aes(x=atemp, y=casual)) +
-    xlab("Daily Mean Normalized Air Temperature") +
-    ylab("Number of Total Casual Bike Uses") +
-    geom_point(col="gray50") +
-    theme_bw()
+  xlab("Daily Mean Normalized Air Temperature") +
+  ylab("Number of Total Casual Bike Uses") +
+  geom_point(col="gray50") +
+  theme_bw()
 
 # show graph from object
 bike_air_temp
@@ -329,31 +329,31 @@ bike_air_temp_mb
 ### Multiple bivariate comparisons with faceting
 
 ggplot(bike_share_daily, aes(casual, fill=workingday, color=workingday)) +
-    geom_density(alpha=0.4) +
-    theme_minimal() +
-    xlab("Daily Casual Bike Use Count") +
-    ylab("") +
-    scale_fill_discrete(name="Work Day?") +
-    scale_color_discrete(name="Work Day?") +
-    facet_wrap(~season, ncol=2) +
-    theme(axis.ticks.y = element_blank(), axis.text.y = element_blank(), 
-    legend.position="top")
+  geom_density(alpha=0.4) +
+  theme_minimal() +
+  xlab("Daily Casual Bike Use Count") +
+  ylab("") +
+  scale_fill_discrete(name="Work Day?") +
+  scale_color_discrete(name="Work Day?") +
+  facet_wrap(~season, ncol=2) +
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank(), 
+        legend.position="top")
 
 # using piping
 require(dplyr)
 
 bike_share_daily %>%
-    filter(holiday == "No" & workingday == "Yes") %>%
-    group_by(mnth) %>%
-    summarize(mean_casual = mean(casual, na.rm=T),
-              sd_casual = sd(casual, na.rm=T),
-              sum_casual = sum(casual)) %>%
-    mutate(cv_casual = round(sd_casual / mean_casual, 2)) %>%
-   ggplot(aes(mean_casual, sd_casual, color=cv_casual, size=sum_casual)) +
-    geom_label(aes(label=mnth)) +
-    scale_size(range=c(2,6)) +
-    theme_bw()
-	
+  filter(holiday == "No" & workingday == "Yes") %>%
+  group_by(mnth) %>%
+  summarize(mean_casual = mean(casual, na.rm=T),
+            sd_casual = sd(casual, na.rm=T),
+            sum_casual = sum(casual)) %>%
+  mutate(cv_casual = round(sd_casual / mean_casual, 2)) %>%
+  ggplot(aes(mean_casual, sd_casual, color=cv_casual, size=sum_casual)) +
+  geom_label(aes(label=mnth)) +
+  scale_size(range=c(2,6)) +
+  theme_bw()
+
 ## Plotting ordinal-scale (e.g., survey) data
 
 require(likert)
@@ -378,32 +378,32 @@ require(quantreg)
 
 # Should always use loess as first pass
 ggplot(bike_share_daily, aes(x=atemp, y=cnt)) +
-    xlab("Daily Mean Normalized Air Temperature") +
-    ylab("Number of Total Bike Uses") +
-    geom_point(col="gray50") +
-    geom_smooth(method="loess") +
-    theme_bw()
+  xlab("Daily Mean Normalized Air Temperature") +
+  ylab("Number of Total Bike Uses") +
+  geom_point(col="gray50") +
+  geom_smooth(method="loess") +
+  theme_bw()
 
 # Plot quantile trends
 require(quantreg)
 
 ggplot(bike_share_daily, aes(x=temp, y=casual)) +
-    xlab("Daily Mean Normalized Temperature") +
-    ylab("Number of Casual Bike Uses") +
-    geom_point(col="gray50") +
-    stat_quantile(aes(color = ..quantile..), quantiles = c(0.05, 0.1, 0.25,
-    0.5, 0.75, 0.9, .95)) +
-    scale_color_gradient2(midpoint=0.5, low="steelblue", mid="blue", 
-    high="steelblue ") +
-    theme_bw()
+  xlab("Daily Mean Normalized Temperature") +
+  ylab("Number of Casual Bike Uses") +
+  geom_point(col="gray50") +
+  stat_quantile(aes(color = ..quantile..), quantiles = c(0.05, 0.1, 0.25,
+                                                         0.5, 0.75, 0.9, .95)) +
+  scale_color_gradient2(midpoint=0.5, low="steelblue", mid="blue", 
+                        high="steelblue ") +
+  theme_bw()
 
 # Probably your last choice in EDA is lm (linear model)
 ggplot(bike_share_daily, aes(x=atemp, y=cnt)) +
-    xlab("Daily Mean Normalized Air Temperature") +
-    ylab("Number of Total Bike Uses") +
-    geom_point(col="gray50") +
-    geom_smooth(method="lm") +
-    theme_bw()
+  xlab("Daily Mean Normalized Air Temperature") +
+  ylab("Number of Total Bike Uses") +
+  geom_point(col="gray50") +
+  geom_smooth(method="lm") +
+  theme_bw()
 
 ### Segmented linear trends
 
@@ -415,20 +415,20 @@ bike_segment$psi
 psi = bike_segment$psi[2]
 
 ggplot(bike_share_daily, aes(x=atemp, y=cnt, group = atemp > psi)) +
-    xlab("Daily Mean Normalized Air Temperature") +
-    ylab("Number of Total Bike Uses") +
-    geom_point(col="gray50") +
-    geom_smooth(method="lm") +
-    theme_bw()
+  xlab("Daily Mean Normalized Air Temperature") +
+  ylab("Number of Total Bike Uses") +
+  geom_point(col="gray50") +
+  geom_smooth(method="lm") +
+  theme_bw()
 
 # Added bivariate density, with breakpoint
 ggplot(bike_share_daily, aes(x=atemp, y=cnt, group = atemp > psi)) +
-    xlab("Daily Mean Normalized Air Temperature") +
-    ylab("Number of Total Bike Uses") +
-    geom_point(col="gray50") +
-    geom_density2d() +
-    geom_smooth(method="lm") +
-    theme_bw()
+  xlab("Daily Mean Normalized Air Temperature") +
+  ylab("Number of Total Bike Uses") +
+  geom_point(col="gray50") +
+  geom_density2d() +
+  geom_smooth(method="lm") +
+  theme_bw()
 
 ## Evaluating quality with control charts
 
@@ -502,13 +502,13 @@ bike_share_grp = group_by(bike_share_daily, weekday, mnth)
 bike_share_mean = summarise(bike_share_grp, mean=mean(casual))
 
 ggplot(bike_share_mean, aes(weekday, mnth)) +
-    geom_tile(aes(fill = mean)) +
-    scale_fill_gradient(low = "white", high = "darkgreen") +
-    xlab("Day of the Week") +
-    ylab("Month") +
-    ggtitle("Mean Daily Casual-Use Bike Sharing") +
-    scale_y_discrete(limits = rev(levels(bike_share_mean$mnth))) +
-    theme_bw() 
+  geom_tile(aes(fill = mean)) +
+  scale_fill_gradient(low = "white", high = "darkgreen") +
+  xlab("Day of the Week") +
+  ylab("Month") +
+  ggtitle("Mean Daily Casual-Use Bike Sharing") +
+  scale_y_discrete(limits = rev(levels(bike_share_mean$mnth))) +
+  theme_bw() 
 
 ### Creating calendar heatmaps
 
@@ -548,12 +548,12 @@ aq = read.csv("https://gist.githubusercontent.com/alansmithy/68be725ac0c00c790c6
 
 # create taucharts 
 tauchart(aq, width=700, height = 500) %>%
-    tau_point("x", "y", color="seriesname") %>%
-    tau_guide_x(min=0, max=22) %>%
-    tau_guide_y(min=0, max=14) %>%
-    tau_legend() %>%
-    tau_tooltip() %>%
-    tau_trendline(models = 'linear', showTrend = F) 
+  tau_point("x", "y", color="seriesname") %>%
+  tau_guide_x(min=0, max=22) %>%
+  tau_guide_y(min=0, max=14) %>%
+  tau_legend() %>%
+  tau_tooltip() %>%
+  tau_trendline(models = 'linear', showTrend = F) 
 
 
 
@@ -625,20 +625,21 @@ boot.ci(q75_boot, type="bca")$bca[4:5]
 require(gridExtra)
 
 p1 = ggplot(PlantGrowth, aes(group, weight)) +
-    ggtitle("Bootstrapped") +
-    stat_summary(fun.data = mean_cl_boot, conf.int = 0.95) 
+  ggtitle("Bootstrapped") +
+  stat_summary(fun.data = mean_cl_boot, fun.args=list(conf.int=0.95))
+
 
 p2 = ggplot(PlantGrowth, aes(group, weight)) +
-    ggtitle("Normal") +
-    stat_summary(fun.data = mean_cl_normal, conf.int = 0.95) 
+  ggtitle("Normal") +
+  stat_summary(fun.data = mean_cl_normal, fun.args=list(conf.int=0.95))
 
 p3 = ggplot(PlantGrowth, aes(group, weight)) +
-    ggtitle("2 SDs") +
-    stat_summary(fun.data = mean_sdl, mult=2) 
+  ggtitle("2 SDs") +
+  stat_summary(fun.data = mean_sdl, fun.args=list(mult = 2)) 
 
 p4 = ggplot(PlantGrowth, aes(group, weight)) +
-    ggtitle("Median+IQR") +
-    stat_summary(fun.data = median_hilow, conf.int = 0.5) 
+  ggtitle("Median+IQR") +
+  stat_summary(fun.data = median_hilow, fun.args=list(conf.int=0.5))
 
 grid.arrange(p1, p2, p3, p4, nrow=2)
 
@@ -701,8 +702,8 @@ flu$monthYear = as.Date(as.yearmon(flu$yweek))
 # Summarize
 require(dplyr)
 flu_subset = flu %>%
-    group_by(monthYear) %>%
-    summarize(cases = sum(ILITOTAL))
+  group_by(monthYear) %>%
+  summarize(cases = sum(ILITOTAL))
 
 # Get rid of NA row
 # NEED TO QA WHY THIS HAPPENS
@@ -773,10 +774,10 @@ tao_compare_melt = melt(tao_compare_airtemp, value.name="Air.Temp")
 # Plot density histograms of each option and 
 # add black dotted line to emphasize the original data
 ggplot(tao_compare_melt, aes(Air.Temp, color=variable)) +
-    geom_density(lwd=1.25) + 
-    geom_density(data=subset(tao_compare_melt, variable=="tao"), 
-        aes(Air.Temp), lty=3, lwd=1.5, color="black") +
-    theme_minimal()
+  geom_density(lwd=1.25) + 
+  geom_density(data=subset(tao_compare_melt, variable=="tao"), 
+               aes(Air.Temp), lty=3, lwd=1.5, color="black") +
+  theme_minimal()
 
 
 ##### A few useful references #####
@@ -792,9 +793,9 @@ ggplot(tao_compare_melt, aes(Air.Temp, color=variable)) +
 # http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/
 # http://www.cookbook-r.com/Graphs/
 # http://www.statmethods.net/advgraphs/ggplot2.html
-	
 
-	
+
+
 ##### ACCESS EDW #####
 
 # http://sps/Committees/SCHAF/SCHAF%20Wiki/Using%20the%20RODBC%20package%20to%20access%20databases.aspx
