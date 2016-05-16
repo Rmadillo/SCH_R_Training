@@ -778,9 +778,22 @@ ggplot(tao_compare_melt, aes(Air.Temp, color=variable)) +
         aes(Air.Temp), lty=3, lwd=1.5, color="black") +
     theme_minimal()
 
+
+##### A few useful references #####
+
+## Concepts
+# https://medium.com/@kennelliott/39-studies-about-human-perception-in-30-minutes-4728f9e31a73
+# http://fellinlovewithdata.com/guides/7-classic-foundational-vis-papers 
+# http://www.visualcinnamon.com/resources/learning-data-visualization/books
+
+## Graphs in R
+# http://www.joyce-robbins.com/wp-content/uploads/2016/04/effectivegraphsmro1.pdf
+# http://tutorials.iq.harvard.edu/R/Rgraphics/Rgraphics.html 
+# http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/
+# http://www.cookbook-r.com/Graphs/
+# http://www.statmethods.net/advgraphs/ggplot2.html
 	
-	
-	
+
 	
 ##### ACCESS EDW #####
 
