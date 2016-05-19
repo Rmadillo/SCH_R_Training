@@ -86,8 +86,17 @@ ggplot(weather, aes(x=Pressure3pm, y=Humidity3pm)) +
   geom_smooth(method = 'loess', se=FALSE) +
   facet_wrap(~WindDir3pm)
 
+# Visualize missing data  
+require(VIM)
+
+matrixplot(weather)
+
+aggr(weather)
+
+
 ####################
-# Prize for the most interesting EDA result!
+# Prizes for the most interesting EDA result! a) best viz "story" & b) best image [volunteers, not required]
+# email code snippet to Dwight and we'll talk through it on screen?
 ####################
 
 # Remove data frame
