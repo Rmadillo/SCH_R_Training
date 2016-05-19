@@ -114,6 +114,15 @@ rattle()
 
 # Troubleshoot if needed
 
+##### Decision Tree #####
 
+# Export rpart model to PMML
+# (Export button doesn't work on KMA02)
+saveXML(pmml(crs$rpart), "rain_rpart.pmml")
+
+# Convert rpart model to SQL
+
+source("https://raw.githubusercontent.com/jasoncapehart/genSQL/master/genSQL.R")
+genSQL(crs$rpart)
 
 
