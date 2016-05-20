@@ -1,7 +1,9 @@
 
 ##### Set up ############################################
 
-#install.packages(c("RGtk2", "magrittr", "stringi", "pmml", "bitops", "colorspace", "ada", "amap", "arules", "arulesViz", "biclust", "cairoDevice", "cba", "cluster", "corrplot", "descr", "doBy", "dplyr", "e1071", "ellipse", "fBasics", "foreign", "fpc", "gdata", "ggdendro", "ggplot2", "gplots", "gridExtra", "gtools", "gWidgetsRGtk2", "hmeasure", "Hmisc", "kernlab", "Matrix", "mice", "nnet", "odfWeave", "party", "playwith", "plyr", "psych", "randomForest", "RColorBrewer", "readxl", "reshape", "rggobi", "RGtk2Extras", "ROCR", "RODBC", "rpart", "rpart.plot", "SnowballC", "stringr", "survival", "timeDate", "tm", "verification", "wskm", "XML"))
+## DO THIS SECTION WHILE WAITING TO BEGIN THE WORKSHOP ##
+
+# install.packages(c("RGtk2", "magrittr", "stringi", "pmml", "bitops", "colorspace", "ada", "amap", "arules", "arulesViz", "biclust", "cairoDevice", "cba", "cluster", "corrplot", "descr", "doBy", "dplyr", "e1071", "ellipse", "fBasics", "foreign", "fpc", "gdata", "ggdendro", "ggplot2", "gplots", "gridExtra", "gtools", "gWidgetsRGtk2", "hmeasure", "Hmisc", "kernlab", "Matrix", "mice", "nnet", "odfWeave", "party", "playwith", "plyr", "psych", "randomForest", "RColorBrewer", "readxl", "reshape", "rggobi", "RGtk2Extras", "ROCR", "RODBC", "rpart", "rpart.plot", "SnowballC", "stringr", "survival", "timeDate", "tm", "verification", "wskm", "XML"))
 
 # install.packages("rattle")
 # library(rattle)
@@ -116,6 +118,8 @@ rattle()
 
 ##### Decision Tree #####
 
+## Weather data ##
+
 # Export rpart model to PMML
 # (Export button doesn't work on KMA02)
 saveXML(pmml(crs$rpart), "rain_rpart.pmml")
@@ -124,5 +128,16 @@ saveXML(pmml(crs$rpart), "rain_rpart.pmml")
 
 source("https://raw.githubusercontent.com/jasoncapehart/genSQL/master/genSQL.R")
 genSQL(crs$rpart)
+
+## Heart disease data ##
+
+# Download from internet, write to local csv
+write.csv(read.table("http://eric.univ-lyon2.fr/~ricco/tanagra/fichiers/heart_for_rattle.txt", sep="\t", header=T), "heart_disease.csv", row.names = F)
+
+# Open and explore using Rattle
+
+##### LUNCH #####
+
+
 
 
