@@ -1,0 +1,72 @@
+---
+title: Differences in <br> Inferences <br>
+subtitle: <br> Brain surgery and statistical philosophy (using R)
+author: "Dwight Barry, PhD  &bull;  Seattle Children's Enterprise Analytics"
+date: "May 25, 2016"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## The study: 
+
+Cognitive outcome after focal surgical resection was retrospectively reviewed for 15 cognitively intact children operated on between 2 and 6 years of age for lesion-related, early-onset epilepsy. Wechsler intelligence tests were conducted prior to and after surgery to explore differences in intelligence between short versus long duration of seizures prior to surgical resection.  
+
+<span style="font-size:75%">The paper: Shurtleff et al 2015. Impact of epilepsy surgery on development of preschool children: identification of a cohort likely to benefit from early intervention. *Journal of Neurosurgery: Pediatrics* 16(4): 383-392. http://dx.doi.org/10.3171/2015.3.PEDS14359</span>
+
+<span style="font-size:70%">This slide deck: https://github.com/Rmadillo/SCH_R_Training/tree/master/Diff_Inf
+</span>
+
+
+## The practical question:
+
+<div class="centered"><span style="font-weight:bold; font-style:italic; font-size: 175%; color:red">Does time from Dx to Tx matter?</span></div>
+
+<br>  
+
+Literature is mixed, partially due to heterogeneous subjects.   
+
+This study focused on a more homogenous group than seen in other lit.   
+
+A drawback to study group similarity was sample size: *n*=15 over a 15 year period.   
+
+## The practical answer:
+
+<div class="centered"><span style="font-weight:bold; font-style:italic; font-size: 175%; color:red">Does time from Dx to Tx matter?</span></div>
+
+<br>  
+
+Probably.
+
+"...shorter seizure duration prior to resection can result in improved cognitive outcome, suggesting that surgery for this population should occur sooner to help improve intelligence outcomes."
+
+## Why we concluded this:
+
+<div class="centered"><span style="font-weight:bold; font-style:italic; font-size: 175%; color:red">Does time from Dx to Tx matter?</span></div> 
+
+<br>  
+
+"Patients who had surgery within 6 months of onset generally had better outcomes compared with patients who had longer duration from the onset of seizures prior to resection. 
+
+While we did not detect statistically significant differences ... clinically important improvements for the short duration group occurred in both FSIQ and nonverbal scores; FSIQ and nonverbal scores improved by 13 and 14 points on average, respectively."
+
+## What would *you* do?
+
+<div class="centered">
+![](https://www.poyi.org/65/photos/01/03.jpg)
+</div>
+
+## 
+
+<div class="centered">
+![](https://pbs.twimg.com/profile_images/557640083709251584/LmA6xXxv.png)
+</div>
+
+## 
+
+
+
+
+## 
