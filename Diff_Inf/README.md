@@ -8,7 +8,7 @@ Cognitive outcome after focal surgical resection was retrospectively reviewed fo
 
 ***Data Dictionary***
 
-**ID**: identifier, Patient "ID" (ordered arbitrary number assignment; not linked to any actual patient identifiers).
+**ID**: identifier, Case "ID" (ordered arbitrary number assignment; not linked to patient identifiers).
 
 **Duration**: factor, takes two values. *Short* refers to patients who had surgical resection within 6 months of initial diagnosis, while *Long* refers to patients who had surgery 18 months or more after initial diagnosis. The span of time between short and long groups is an artifact of the study’s population and was not pre-determined, as there were no patients who had surgery between 6 and 18 months from diagnosis.
 
