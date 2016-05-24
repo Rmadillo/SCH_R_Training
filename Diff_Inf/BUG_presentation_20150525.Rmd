@@ -6,6 +6,7 @@ date: "May 25, 2016"
 output: ioslides_presentation
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 ```
@@ -75,6 +76,7 @@ While we did not detect statistically significant differences ... clinically imp
 ```{r LoadLibraries, echo=TRUE}
 
 require(reshape2)   # manipulate data frames
+require(htmlTable)  # txtRound function
 require(knitr)      # formatted tables
 require(psych)      # summary statistics
 require(boot)       # bootstrapping
@@ -103,9 +105,6 @@ DataWideFSIQ = DataWideFSIQ[,c(1:3,6)]
 DataWideD = na.omit(DataWideFSIQ)
 DataWideD = DataWideD[order(DataWideD$Duration),]
 
-# Remove extra data frames
-#rm(DataWideFSIQ, DataWideV, DataWideNV, FSIQandVerbal, AllScores)
-
 ```
 
 
@@ -132,7 +131,7 @@ FLlm = lm(Lphase$FSIQ ~ Lphase$Phase)
 
 ## Summary Stats: Change in FSIQ
 
-Long (>= 18 months Dx to Tx)  
+**Long (>= 18 months Dx to Tx)**  
 ```{r LongSummary}
 
 sum_stat_table = describeBy(DataWideD$FSIQD, DataWideD$Duration, skew=FALSE)
@@ -140,12 +139,24 @@ kable(sum_stat_table[1])
 
 ```
 
-Short (<= 6 months Dx to Tx)  
+**Short (<= 6 months Dx to Tx)**  
 ```{r ShortSummary}
 
 kable(sum_stat_table[2])
 
 ```
+
+
+## Bottom Line Effect Sizes
+
+**Absolute Mean Differences for Short vs. Long Groups**  
+
+`r txtRound(abs(mean(ShortFSIQD) - mean(LongFSIQD)), 0)`  
+
+**Percent with Same or Improved Score After Surgery**  
+
+*Short*: `r txtRound(length(subset(ShortFSIQD, ShortFSIQD >=0)) / length(ShortFSIQD), 2)`  
+*Long*: `r txtRound(length(subset(LongFSIQD, LongFSIQD >=0)) / length(LongFSIQD), 2)`  
 
 
 ## {.flexbox .vcenter}
@@ -165,6 +176,8 @@ ggplot(DataWideD, aes(FSIQD, fill=Duration, group=Duration)) +
   scale_x_continuous(limit = c(-30, 30), breaks=seq(-30,30,by=5)) +
   geom_density(alpha=.70) + 
   geom_vline(xintercept=0, linetype="dashed") +
+  geom_point(aes(y = -0.0025, fill=Duration), alpha=0.0, 
+           position = position_jitter(height = 0.002), size=2) +
   theme_bw() +
   theme(axis.text.y=element_blank(),axis.ticks=element_blank()) 
 
@@ -199,7 +212,6 @@ ggplot(DataLong, aes(Phase, FSIQ, group=ID, label=ID, shape=Duration, colour=Dur
   theme_bw() +
   scale_colour_manual(values = epicolors) +   
   scale_shape_manual(values = c(1, 2)) + 
-  #theme(legend.position="none") +   
   geom_segment(aes(x = 1, y = FSlm$coef[1], xend = 2, yend = FSlm$coef[1]+FSlm$coef[2]), 
                alpha=0.01, linetype=1, size=2, colour="#0076C0") +
   geom_segment(aes(x = 1, y = FLlm$coef[1], xend = 2, yend = FLlm$coef[1]+FLlm$coef[2]), 
@@ -223,7 +235,6 @@ clinically important improvements for the short duration group occurred in both 
 
 ## *p* is controversial
 
-  
 <div class="centered">
 ![](https://pbmo.files.wordpress.com/2013/01/null-hypothesis-by-xkcd.png)
 <div>
@@ -231,11 +242,109 @@ clinically important improvements for the short duration group occurred in both 
 
 ## Clinicians don't care...
 
-"For the rest of us, 'what is the p-value?' Is this another urine term?" - SCH Doctor
+"For the rest of us, 'what is the p-value?' Is this another urine term?" - SCH Doctor (personal communication, 2016)
 
 <br>
 
+<div class="centered">
 ![](coffee_p.jpg)
+</div>
 
 
-## ... but we should.
+## ... but we <u>must</u>.
+
+
+
+## GET FREQY 1
+
+**Confidence Intervals for FSIQ, Short Duration Group Mean**
+```{r CIShort}
+
+# FSIQ, Short Group
+b1m = boot(ShortFSIQD, function(u,i) mean(u[i]), R = 9999)
+ShortFSIQDCI = boot.ci(b1m, type = c("bca"), conf=.90)
+# Display results for FSIQ, Short
+ShortFSIQDCI
+
+```
+
+
+## GET FREQY 2
+
+**Confidence Intervals for FSIQ, Long Duration Group Mean**
+```{r CILong}
+
+# FSIQ, Long Group
+b2m = boot(LongFSIQD, function(u,i) mean(u[i]), R = 9999)
+LongFSIQDCI = boot.ci(b2m, type = c("bca"), conf=.90)
+# Display results for FSIQ, Long
+LongFSIQDCI
+
+```
+
+
+##
+
+```{r FSIQ_freq}
+
+# frequentist tets
+FSIQ.t = t.test(DataWideD$FSIQD~DataWideD$Duration, conf.level = 0.9)
+FSIQ.t2 = t.test(DataWideD$FSIQD~DataWideD$Duration, var.equal=T, conf.level = 0.9)
+FSIQ.t3 = wilcox_test(DataWideD$FSIQD~DataWideD$Duration, conf.int=T, conf.level = 0.9)
+FSIQ.t4 = wilcox_test(DataWideD$FSIQD~DataWideD$Duration, distribution="exact", conf.int=T, conf.level = 0.9)
+PermSVL1 = oneway_test(FSIQD~Duration, data=DataWideD, distribution="exact")
+FSIQ.lm1 = lm(DataWideD$FSIQD ~ DataWideD$Duration)
+
+```
+
+
+## The humble *t*-test, default R function
+
+```{r ttest, echo=T}
+
+t.test(DataWideD$FSIQD~DataWideD$Duration, conf.level = 0.9)
+
+```
+
+## The humble *t*-test's *p*-value
+
+<div class="centered"><span style="font-weight:bold; font-style:italic; font-size: 175%; color:red">*p* = `r txtRound(FSIQ.t$p.value,3)`</span></div>  
+
+<br>  
+
+Fisher: "we have weak evidence that our results are different from no effect."  
+
+N-P: "the result is not statistically signficant; either there is no effect *or* our study did not have the power to detect an effect."  
+
+
+## BUT WAIT!
+(No evidence of unequal variances! More POWER!)
+
+```{r ttest2, echo=T}
+
+t.test(DataWideD$FSIQD~DataWideD$Duration, var.equal=TRUE, 
+       conf.level = 0.9)
+
+```
+
+
+## Frequentist *p* values
+
+
+| Test Type | FSIQ |
+| :------------- | -------------- |
+| *t*-test, equal variances  | `r txtRound(FSIQ.t2$p.value,3)` | 
+| *t*-test, unequal variances  | `r txtRound(FSIQ.t$p.value,3)` | 
+| Permutation test  | `r txtRound(pvalue(PermSVL1),3)` | 
+| Mann-Whitney-Wilcoxon (asymptotic)  | `r txtRound(pvalue(FSIQ.t3),3)` |
+| Mann-Whitney-Wilcoxon (exact) | `r txtRound(pvalue(FSIQ.t4),3)` | 
+| Linear model | `r txtRound(summary(FSIQ.lm1)$coefficients[2,4], 3)` |
+
+  
+##
+
+
+
+
+## 
+
