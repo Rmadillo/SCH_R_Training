@@ -349,9 +349,9 @@ This is also the basis for the definition of a confidence interval.
 
 ## Celebrity Smackdown: Fisher vs. N-P
 
-<span style="font-size: 150%">Since Fisher's *p* already assumes the truth of the null, the probability of falsely rejecting the null (i.e., an $\alpha$ level) is irrelevant...
+<div style="font-size: 150%">Since Fisher's *p* already assumes the truth of the null, the probability of falsely rejecting the null (i.e., an $\alpha$ level) is irrelevant...  
 
-...so **reporting an exact *p* relative to $\alpha$ is meaningless.**</span>   
+...so **reporting an exact *p* relative to $\alpha$ is meaningless.**</div>   
 
 
 ## The humble *t*-test's *p*-value
@@ -615,6 +615,7 @@ FSIQ.lm0 = lm(DataWideD$FSIQD ~ 1)
 
 ```
 
+<div style="font-size: 150%">
 **$H_1$: FSIQ = $\beta_0$ + *Tx Group* + $\epsilon$**  
 
 FSIQ = `r txtRound(FSIQ.lm1$coef[1], 2)` + `r txtRound(FSIQ.lm1$coef[2], 2)`
@@ -624,6 +625,7 @@ FSIQ = `r txtRound(FSIQ.lm1$coef[1], 2)` + `r txtRound(FSIQ.lm1$coef[2], 2)`
 **$H_0$: FSIQ = $\beta_0$ + $\epsilon$**  
 
 FSIQ = `r txtRound(FSIQ.lm0$coef[1], 2)`  
+</div>
 
 
 ## AIC Table for FSIQ
