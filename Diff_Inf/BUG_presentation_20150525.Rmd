@@ -20,6 +20,8 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
 https://github.com/Rmadillo/SCH_R_Training/tree/master/Diff_Inf  
 
+<span style="font-size:60%">https://raw.githubusercontent.com/Rmadillo/SCH_R_Training/master/Diff_Inf/BUG_presentation_20150525.Rmd</span>  
+
 
 ## The study: 
 
@@ -653,8 +655,8 @@ kable(FSIQ.IT, digits=2)
 
 ```
 
-
-$H_1$ is `r txtRound((FSIQ.IT[1,6] / FSIQ.IT[2,6]) , 1)` more likely than $H_0$. 
+<br>  
+$H_1$ is `r txtRound((FSIQ.IT[1,6] / FSIQ.IT[2,6]) , 1)` more likely than $H_0$
 
 
 ## IT methods allow for model averaging
@@ -710,7 +712,7 @@ FSIQ.modavg.effect
 
 - Frequentism
     - Fisher: *p* is an evidence probability
-    - Neyman-Pearson (N-P): $alpha; is an error probability 
+    - Neyman-Pearson (N-P): &alpha; is an error probability 
     - <del>NHST\*: an awkward and incorrect hybrid where you want *p* < &alpha;</del>
 - Effect sizes
 - Bayesian
