@@ -668,6 +668,7 @@ $H_1$ is `r txtRound((FSIQ.IT[1,6] / FSIQ.IT[2,6]) , 1)` more likely than $H_0$
 # do model averaging on results
 FSIQ.lm.intercept.avg = modavg(parm = "(Intercept)", cand.set = FSIQ.candmodels, modnames = mnames, conf.level=0.9)
 
+
 FSIQ.lm.intercept.avg
 
 ```
@@ -706,6 +707,13 @@ FSIQ.modavg.effect = modavgEffect(cand.set = FSIQ.Cands, modnames = mnames, newd
 FSIQ.modavg.effect
 
 ```
+
+
+## Hypothesized model outcome
+
+Accounting for model uncertainty, the likely effect size of being in the short duration treatment group is **`r txtRound(FSIQ.modavg.effect[6], 0)`** FSIQ points (90% CI: `r txtRound(FSIQ.modavg.effect[9], 0)`, `r txtRound(FSIQ.modavg.effect[10], 0)`). 
+
+
 
 
 ## How best to infer?
