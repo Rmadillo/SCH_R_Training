@@ -12,11 +12,20 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 ```
 
 
+## This talk: code and data
+
+![](https://avatars1.githubusercontent.com/u/3860165)
+
+**github --> Rmadillo --> SCH_R_Training --> Diff_Inf**  
+
+https://github.com/Rmadillo/SCH_R_Training/tree/master/Diff_Inf  
+
+
 ## The study: 
 
 Cognitive outcome after focal surgical resection was retrospectively reviewed for 15 cognitively intact children operated on between 2 and 6 years of age for lesion-related, early-onset epilepsy. Wechsler intelligence tests were conducted prior to and after surgery to explore differences in intelligence between short versus long duration of seizures prior to surgical resection.  
 
-<span style="font-size:75%">The paper: Shurtleff et al 2015. Impact of epilepsy surgery on development of preschool children: identification of a cohort likely to benefit from early intervention. *Journal of Neurosurgery: Pediatrics* 16(4): 383-392. http://dx.doi.org/10.3171/2015.3.PEDS14359</span>
+<span style="font-size:75%">The paper: Shurtleff et al. 2015. Impact of epilepsy surgery on development of preschool children: identification of a cohort likely to benefit from early intervention. *Journal of Neurosurgery: Pediatrics* 16(4): 383-392. http://dx.doi.org/10.3171/2015.3.PEDS14359</span>
 
 <span style="font-size:70%">This slide deck: https://github.com/Rmadillo/SCH_R_Training/tree/master/Diff_Inf
 </span>
@@ -24,20 +33,20 @@ Cognitive outcome after focal surgical resection was retrospectively reviewed fo
 
 ## The practical question:
 
-<div class="centered"><span style="font-weight:bold; font-style:italic; font-size: 175%; color:red">Does time from Dx to Tx matter?</span></div>
+<div class="centered"><span style="font-weight:bold; font-style:italic; font-size: 175%; color:red">Does time from Dx to Tx matter for cognitive outcomes?</span></div>
 
 <br>  
 
 Literature is mixed, partially due to heterogeneous subjects.   
 
-This study focused on a more homogenous group than seen in other lit.   
+This study focused on a more homogeneous group than seen in other lit.   
 
 A drawback to study group similarity was sample size: *n*=15 over a 15 year period, with only 11 subjects having pre/post test scores.   
 
 
 ## The practical answer:
 
-<div class="centered"><span style="font-weight:bold; font-style:italic; font-size: 175%; color:red">Does time from Dx to Tx matter?</span></div>
+<div class="centered"><span style="font-weight:bold; font-style:italic; font-size: 175%; color:red">Does time from Dx to Tx matter for cognitive outcomes?</span></div>
 
 <br>  
 
@@ -48,7 +57,7 @@ Probably.
 
 ## Why we concluded this:
 
-<div class="centered"><span style="font-weight:bold; font-style:italic; font-size: 175%; color:red">Does time from Dx to Tx matter?</span></div> 
+<div class="centered"><span style="font-weight:bold; font-style:italic; font-size: 175%; color:red">Does time from Dx to Tx matter for cognitive outcomes?</span></div> 
 
 <br>  
 
@@ -114,7 +123,6 @@ DataWideD = DataWideD[order(DataWideD$Duration),]
 ShortFSIQD = na.omit(subset(DataWideD$FSIQD, DataWideD$Duration=="Short"))
 LongFSIQD = na.omit(subset(DataWideD$FSIQD, DataWideD$Duration=="Long"))
 
-#Set hex colors based on guidelines in* ***Epilepsia*** *and relevel to use pre first
 # #A30134 for red/long, #0076C0 for blue/short
 epicolors = c("#A30134", "#0076C0")
 # relevel Phase so Pre comes first
@@ -147,13 +155,13 @@ kable(sum_stat_table[2])
 ```
 
 
-## Bottom Line Effect Sizes
+## Basic Effect Sizes
 
-**Absolute Mean Differences for Short vs. Long Groups**  
+**Absolute Mean Difference in FSIQ for Short vs. Long Groups**  
 
-`r txtRound(abs(mean(ShortFSIQD) - mean(LongFSIQD)), 0)`  
+|D| = `r txtRound(abs(mean(ShortFSIQD) - mean(LongFSIQD)), 0)`  
 
-**Percent with Same or Improved Score After Surgery**  
+**Percent with Same or Improved FSIQ Score After Surgery**  
 
 *Short*: `r txtRound(length(subset(ShortFSIQD, ShortFSIQD >=0)) / length(ShortFSIQD), 2)`  
 *Long*: `r txtRound(length(subset(LongFSIQD, LongFSIQD >=0)) / length(LongFSIQD), 2)`  
@@ -170,6 +178,7 @@ m1dur = subset(DataWideD$FSIQD, DataWideD$Duration=="Short")
 m2dur = subset(DataWideD$FSIQD, DataWideD$Duration=="Long")
 
 ggplot(DataWideD, aes(FSIQD, fill=Duration, group=Duration)) + 
+  xlab(expression(paste(Delta, ' FSIQ'))) +
   geom_vline(xintercept=mean(m1dur), color="#0076C0" ) +  
   geom_vline(xintercept=mean(m2dur), color="#A30134") +
   scale_fill_manual(values = epicolors) + 
@@ -188,6 +197,7 @@ ggplot(DataWideD, aes(FSIQD, fill=Duration, group=Duration)) +
 ```{r densityfig2, fig.height=5.5}
 
 ggplot(DataWideD, aes(FSIQD, fill=Duration, group=Duration)) + 
+  xlab(expression(paste(Delta, ' FSIQ'))) +
   geom_vline(xintercept=mean(m1dur), color="#0076C0" ) +  
   geom_vline(xintercept=mean(m2dur), color="#A30134") +
   scale_fill_manual(values = epicolors) + 
@@ -242,7 +252,7 @@ clinically important improvements for the short duration group occurred in both 
 
 ## Clinicians don't care...
 
-"For the rest of us, 'what is the p-value?' Is this another urine term?" - SCH Doctor (personal communication, 2016)
+"For the rest of us, 'what is the p-value?' Is this another urine term?" --an SCH Doctor (personal communication, 2016)
 
 <br>
 
@@ -255,7 +265,7 @@ clinically important improvements for the short duration group occurred in both 
 
 Odds are, it's wrong: Science fails to face the shortcomings of statistics --*Science News*  2010  
 
-Significance tests as sorcery: Science is empirical--significance tests are not --*Charles Lamdin, Intel Corporation* 2012
+Significance tests as sorcery: Science is empirical--significance tests are not --*Charles Lambdin, Intel Corporation* 2012
 
 Trouble at the lab: Scientists like to think of science as self-correcting. To an alarming degree, it is not --*The Economist* 2013
 
@@ -274,7 +284,7 @@ The trouble with 'scientific' research today: A lot that's published is junk --*
 
 - Frequentism
     - Fisher: *p* is an evidence probability
-    - Neyman-Pearson (N-P): "*p*" is an error probability 
+    - Neyman-Pearson (N-P): &alpha; is an error probability 
     - NHST: an awkward and incorrect hybrid where you want *p* < &alpha;
 - Effect sizes
 - Bayesian
@@ -315,11 +325,12 @@ t.test(DataWideD$FSIQD~DataWideD$Duration, conf.level = 0.9)
 
 ## Celebrity Smackdown: Fisher vs. N-P
 
+<div class="centered">
 ![](https://math-magical.wikispaces.com/file/view/image001.png/101989891/234x240/image001.png)
   
 
 ![](http://dutarte.perso.neuf.fr/statistique/HISTOIRE%20STATISTIQUE%202_fichiers/image012.jpg)
-
+</div>
 
 ## Celebrity Smackdown: Fisher vs. N-P
 
@@ -362,7 +373,7 @@ This is also the basis for the definition of a confidence interval.
 
 Fisher: "we have weak evidence that our results are different from no effect."  
 
-N-P: "the result is not statistically signficant; either there is no effect *or* our study did not have the power to detect an effect."  
+N-P: "the result is not statistically significant; either there is no effect *or* our study did not have the power to detect an effect."  
 
 
 ## Finally, the actual hypothesis(es)
@@ -373,7 +384,7 @@ N-P: "the result is not statistically signficant; either there is no effect *or*
 
 *N-P only:*  
 
-<span style="font-weight:bold; font-size: 150%">$H_1$: The true difference between population means is <> 0 (N-P only).</span>
+<span style="font-weight:bold; font-size: 150%">$H_1$: The true difference between population means is &ne; 0.</span>
 
 
 ## The humble *t*-test's *p*-value
@@ -382,7 +393,7 @@ N-P: "the result is not statistically signficant; either there is no effect *or*
 
 <br>  
 
-N-P: "the result is not statistically signficant; either there is no effect *or* our study did not have the power to detect an effect."  
+N-P: "the result is not statistically significant; either there is no effect *or* our study did not have the power to detect an effect."  
 
 *Journal 1: "Reject. The power is too low to come to any useful conclusions from this study."*
 
@@ -453,7 +464,7 @@ Adjustment based on p-value from *t*-test for equal variances.
 
 Fisher: "what the heck are you even *doing*, you ignorant cretins?"  
 
-N-P: "the result is not statistically signficant; either there is no effect *or* our study did not have the power to detect an effect. Screw you, Fisher."  
+N-P: "the result is not statistically significant; either there is no effect *or* our study did not have the power to detect an effect. Screw you, Fisher."  
 
 ```{r FSIQbdiff}
 
@@ -524,9 +535,10 @@ FESSVL = dmes.boot(longFSIQD, shortFSIQD,theta.es="Ab", B=9999, alpha=0.1)
 
 ```
 
-<div class="centered"><span style="font-weight:bold; font-size: 150%">Cohen's *d*: **`r txtRound(FESSVL$Coh.d,2)`**</span>    
+<div class="centered"><span style="font-size: 150%">Cohen's *d*: **`r txtRound(FESSVL$Coh.d,2)`**</span>    
 
-<span style="font-weight:bold; font-size: 150%">Vargha-Delaney's *A*: **`r txtRound(FESSVL$theta,2)`**</span></div>   
+<span style="font-size: 150%">Vargha-Delaney's *A*: **`r txtRound(FESSVL$theta,2)`**</span></div>   
+<br>  
   
 
 | CI Type | 90% confidence interval on ESSs |
@@ -642,6 +654,9 @@ kable(FSIQ.IT, digits=2)
 ```
 
 
+$H_1$ is `r txtRound((FSIQ.IT[1,6] / FSIQ.IT[2,6]) , 1)` more likely than $H_0$. 
+
+
 ## IT methods allow for model averaging
 
 **$\beta_0$**   
@@ -695,8 +710,8 @@ FSIQ.modavg.effect
 
 - Frequentism
     - Fisher: *p* is an evidence probability
-    - Neyman-Pearson (N-P): "*p*" is an error probability 
-    - <del>NHST\*: an awkward and incorrect hybrid where you want *p* < &alpha; </del>
+    - Neyman-Pearson (N-P): $alpha; is an error probability 
+    - <del>NHST\*: an awkward and incorrect hybrid where you want *p* < &alpha;</del>
 - Effect sizes
 - Bayesian
 - Information-theory
@@ -709,7 +724,7 @@ FSIQ.modavg.effect
 
 - Frequentism
     - <del>Fisher: *p* is an evidence probability</del>
-    - Neyman-Pearson (N-P): "*p*" is an error probability 
+    - Neyman-Pearson (N-P): $alpha; is an error probability 
     - <del>NHST\*: an awkward and incorrect hybrid where you want *p* < &alpha; </del>
 - Effect sizes
 - Bayesian
@@ -721,10 +736,10 @@ FSIQ.modavg.effect
 
 ## How best to infer?
 
-"As in any branch of science, new and improved statistical mdethods are constantly being developed. Ecologists would not use 80-year-old genetic or physiological techniques when more powerful and useful methods are available. Why don't we apply the same standards when drawing conclusions from our data?"  --[Gerrodette 2011](https://swfsc.noaa.gov/uploadedfiles/divisions/prd/programs/etp_cetacean_assessment/gerrodette2011inferencewithoutsignificance.pdf)
+"As in any branch of science, new and improved statistical methods are constantly being developed. Ecologists would not use 80-year-old genetic or physiological techniques when more powerful and useful methods are available. Why don't we apply the same standards when drawing conclusions from our data?"  --[Gerrodette 2011](https://swfsc.noaa.gov/uploadedfiles/divisions/prd/programs/etp_cetacean_assessment/gerrodette2011inferencewithoutsignificance.pdf)
 
 <br>  
-Defending *p*-values (either interpretation) as the primary inferential method is akin to defending Punnett squares as the best tool for modern genetics.   
+(Defending *p*-values as the primary inferential method is akin to defending Punnett squares as the best tool for modern genetics.)   
 
 
 ## How best to infer?
@@ -763,7 +778,7 @@ There are three different general questions one can ask given a data set [(Royal
 
 - <del>Frequentism</del>
     - <del>Fisher: *p* is an evidence probability</del>
-    - <del>Neyman-Pearson (N-P): "*p*" is an error probability </del>
+    - <del>Neyman-Pearson (N-P): $alpha; is an error probability </del>
     - <del>NHST: an awkward and incorrect hybrid where you want *p* < &alpha; </del>
 - Effect sizes
 - Bayesian
@@ -773,9 +788,9 @@ There are three different general questions one can ask given a data set [(Royal
 ## The impact of statistical philosophy on brain surgery:
 
 - **Frequentism:** the result was (was not?) statistically significant (*p* = 0.06)
-- **Effect sizes:** |D| = 13 (90% CI: 3, 24)
-- **Bayesian:** mostly likely mean of |D| = 14 (90% HDI: -2, 30), 92% chance of being > 0, 83% chance of being > 5
-- **Information-theory:** evidence in data suggests that |D| = 12 (90% CI: -5, 22), 35% chance $H_0$ is best model
+- **Effect sizes:** |D| = 13 (90% CI: 3, 24); *d* = 1.4 (90% CI: 0.1, 2.9); *A* = 0.82 (90% CI: 0.45, 0.97)
+- **Bayesian:** posterior |D| = 14 (90% HDI: -2, 30), 92% chance of being > 0, 83% chance of being > 5
+- **Information-theory:** evidence in data suggests that |D| = 9 (90% CI: -5, 23); 35% chance $H_0$ is best model; $H_1$ is 1.8x more likely than $H_0$
 
 
 ## What would *you* do?
