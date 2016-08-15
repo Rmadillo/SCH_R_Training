@@ -12,10 +12,14 @@ require(ggExtra)
 
 # Guidance on the Use of Control Charts for Quality Improvement and Monitoring
 
+Every process has natural variation--*noise*--included as an inherent part of that process. True signals emerge only when you have properly characterized that variation.  
 
-Control charts are meant to help you identify departures from a stable process. Run charts help you monitor any sort of time series data.  
+Control charts are meant to help you identify departures from a **stable** process. Run charts help you monitor any sort of time series data.  
 
 In many cases, a run chart may be all you need.   
+
+In all cases, *never* rely on a table to evaluate process performance. Tables can supplement graphs, but should never be used without them.   
+
 
 | Use a run chart if | Use a control chart if |
 | ------------------------------------ | ------------------------------------- |
@@ -28,13 +32,46 @@ In many cases, a run chart may be all you need.
 | You have little control over or cannot control the metric (e.g., ED volume/acuity) | You have the potential to control the process driving the metric (e.g., ED wait times) | 
 | | You understand the practical trade-offs between the sensitivity and specificity of the control limits relative to your need to investigate or act |
 | | You know which statistical distribution to use to calculate the control limits to ensure you have the proper mean-variance relationship |
+| You do not understand one or more of the statistical issues discussed in the control chart column | |
+
+
+### Run charts
+
+Run charts are meant to show variation and trends over time (or in sequence). They do not rely on parametric statistical theory, so they cannot distinguish between common cause and special cause variation. However, improperly-constructed control charts can't either, so run charts can be more readily used where statistical knowledge is limited. So while run charts are not as always as powerful as control charts, they can still provide practical monitoring and useful insights into the process.  
+
+Run charts typically employ the median for the reference line.   
+
+Any metric can be tracked with a run chart.  
+
+**Identifying possible signals of change in run charts**  
+
+- *"Astronomical" data point*: a point so different from the rest that anyone would agree that the value is unusual.  
+- *Process shift*: Six or more consecutive points all above or all below the median line.  
+- *Trend*: Five or more consecutive points all increasing or all decreasing.  
+- *Number of runs*: A run is a set of data points on one side of the median line. Too many or too few runs suggest a pattern inconsistent with natural variation. See Appendix 1 for a table of what constitutes too many/few runs for a given number of data points.    
 
 
 ### Natural variation and control charts
 
+Understanding natural variation in time series data is the essential point of quality assurance or process improvement effort. It's a rookie mistake to use control charts to focus solely on the values themselves or their central tendency.  
+
+Statistical theory provides the basis by which we can evaluate processes to more confidently detect changes in process amongst the noise of natural variation.  
+
+
+
+```{r ggmarg}
+df = data.frame(x = seq(1:36), y = rnorm(36, 19, 2))
+# fix(df)
+nat_var_plot = ggplot(df, aes(x, y)) + geom_line()
+ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=1)
+```
+
+
 ### Tips and Tricks
 
 - Carefully define your numerator and denominator. Evaluate each separately over time to see whether there are any unusual features or patterns. Sometimes patterns can occur in one or the other than disappear when coalesced into a rate or proportion.  
+
+- The definition of your control limits depends on the trade-off between sensitivity and specificity for the question at hand. Typical control charts are built on 3&sigma; limits, which provides the optimal trade-off between sensitivity and specificity. When you need to err on the side of caution--for example, in patient safety applications--2&sigma limits may be more appropriate. If you need to err on the side of certainty, 4-6&sigma; limits may be more useful.  
 
 - Ensure your control limits make sense. For example, if you have proportion data and your control limits fall above 100 or below 0, there's clearly an error somewhere. Ditto with negative counts.  
 
@@ -44,10 +81,14 @@ In many cases, a run chart may be all you need.
 
 - For proportion data, prefer p-charts to np-charts. Again, we almost never have a constant denominator, so np-charts would not be appropriate. Even when we do, using a p-chart helps reduce audience confusion by explicitly stating the "per *x*".   
 
-- For raw ordinal data (such as likert scores), do not use means or control limits. Just. Don't. If you must plot a single value, convert to a proportion (e.g., "top box scores") first. However, stacked bar or mosaic charts describe this kind of data much better, and can be done in the same amount of space.  
+- For raw ordinal data (such as likert scores), do not use means or control limits. Just. Don't. If you must plot a single value, convert to a proportion (e.g., "top box scores") first. However, stacked bar or mosaic charts describe this kind of data much better, and can be done in the same amount of space.    
+
+- Control charts don't measure "statistical significance"--they are meant to reduce the chances of incorrectly deciding whether a process is in control or not. Control limits are *not* confidence limits.     
 
 
 ### Count, proportion, or rate data
+
+The majority of healthcare metrics of concern are rates, so the most common control chart is the u-chart.  
 
 | If your data involve... | use a ... | based on the ... distribution. | 
 | ----------------------------- | --------- | ----------------------------- | 
@@ -56,7 +97,7 @@ In many cases, a run chart may be all you need.
 | Proportions (with unequal opportunity/variable denominator) | p chart | binomial |
 | Proportions (with equal opportunity/constant denominator) | np chart | binomial | 
 
-In each case, the center line will be the arithmatic mean of the data window of interest. Rather than using $\bar{x}$ abbreviation, these values are usually named for each type of chart to help emphasize the use of control limits that are *not* based on the normal distribution.    
+In each case, the center line will be the arithmetic mean of the data window of interest. Rather than using $\bar{x}$ abbreviation, these values are usually named for each type of chart to help emphasize the use of control limits that are *not* based on the normal distribution.    
 
 Control limits (3&sigma;) are calculated as follows:  
 
