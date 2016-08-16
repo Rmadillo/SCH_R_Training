@@ -60,6 +60,7 @@ Statistical theory provides the basis by which we can evaluate processes to more
 
 
 ```{r ggmarg}
+set.seed(3)
 df = data.frame(x = seq(1:36), y = rnorm(36, 19, 2))
 # fix(df)
 nat_var_plot = ggplot(df, aes(x, y)) + geom_line()
@@ -93,8 +94,8 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=1)
 
 ### Which control chart? 
 
-**PLACEHOLDER FOR BRENDAN'S FLOWCHART**
-![]()
+
+![](https://github.com/Rmadillo/SCH_R_Training/blob/master/images/controlchartflowchart.png)
 
 
 ### 
@@ -117,7 +118,7 @@ The majority of healthcare metrics of concern are rates, so the most common cont
 | Counts (with equal opportunity/constant denominator) | c chart | Poisson |
 | Proportions (with unequal opportunity/variable denominator) | p chart | binomial |
 | Proportions (with equal opportunity/constant denominator) | np chart | binomial | 
-| Infrequent counts (with equal opportunity/constant denominator) | g chart | geometric | 
+| Rare events/Infrequent counts (with equal opportunity/constant denominator) | g chart | geometric | 
 
 In each case, the center line will be the arithmetic mean of the data window of interest. Rather than using $\bar{x}$ abbreviation, these values are usually named for each type of chart to help emphasize the use of control limits that are *not* based on the normal distribution.    
 
@@ -259,3 +260,16 @@ spc.plot(subgroup.g, point.g, mean.g, sigma.g, lcl.show = FALSE, k = 3,
          label.x = "Infection number", label.y = "Days between infections")
 
 ```
+
+### When assumptions fail
+
+
+Use a run chart, and do not rely on the runs or process shift rules. 
+
+Still need limits? Use a GAM or GAMM.
+
+
+
+
+### When to revise limits
+
