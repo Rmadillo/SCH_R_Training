@@ -96,6 +96,7 @@ The majority of healthcare metrics of concern are rates, so the most common cont
 | Counts (with equal opportunity/constant denominator) | c chart | Poisson |
 | Proportions (with unequal opportunity/variable denominator) | p chart | binomial |
 | Proportions (with equal opportunity/constant denominator) | np chart | binomial | 
+| Infrequent counts (with equal opportunity/constant denominator) | g chart | geometric | 
 
 In each case, the center line will be the arithmetic mean of the data window of interest. Rather than using $\bar{x}$ abbreviation, these values are usually named for each type of chart to help emphasize the use of control limits that are *not* based on the normal distribution.    
 
@@ -107,6 +108,7 @@ Control limits (3&sigma;) are calculated as follows:
 
 **Proportions (p):** $3\sqrt{\frac {p (1 - p)}{n_i}}$  
 
+**Infrequent counts (g):** $3\sqrt{g (g + 1)}$  
 
 
 ### Continuous data 
@@ -125,4 +127,114 @@ acf(df$y)
 
 # Linear trend (not flat)
 summary(lm(y ~ x, data = df))
+```
+
+### Examples
+
+``` {r plotfunc, echo = FALSE}
+spc.plot <- function(subgroup, point, mean, sigma, k = 3,
+                     ucl.show = TRUE, lcl.show = TRUE, ucl.max = Inf, lcl.min = -Inf,
+                     label.x = "Subgroup", label.y = "Value")
+{
+    # Plots control chart with ggplot
+    # 
+    # Args:
+    #   subgroup: Subgroup definition (for x-axis)
+    #   point: Subgroup sample values (for y-axis)
+    #   mean: Process mean value (for center line)
+    #   sigma: Process variation value (for control limits)
+    #   k: Specification for k-sigma limits above and below center line.
+    #      Default is 3.
+    #   ucl.show: Visible upper control limit? Default is true.
+    #   lcl.show: Visible lower control limit? Default is true.
+    #   ucl.max: Maximum feasible value for upper control limit.
+    #   lcl.min: Minimum feasible value for lower control limit.
+    #   label.x: Specify x-axis label
+    #   label.y: Specify y-axis label.
+
+    df <- data.frame(subgroup, point)
+    df$ucl <- min(ucl.max, mean + k*sigma)
+    df$lcl <- max(lcl.min, mean - k*sigma)
+    
+    p <- ggplot(data = df, aes(x = subgroup)) +
+        geom_hline(yintercept = mean, col = "gray", size = 1) +
+        geom_line(aes(y = point), col = "blue") +
+        geom_point(aes(y = point), col = "blue") +
+        labs(x = label.x, y =label.y)
+    
+    if (ucl.show) {
+        p <- p + geom_line(aes(y = ucl), col = "red")
+    }
+    
+    if (lcl.show) {
+        p <- p + geom_line(aes(y = lcl), col = "red")
+    }
+    
+    p
+}
+
+set.seed(100)
+
+```
+
+#### *u* chart example
+
+``` {r uex, fig.height = 3.5}
+## Generate sample data
+linedays <- sample(1000:2000,36)
+infections <- rpois(36, 4)
+dates <- seq(as.Date("2013/10/1"), by = "month", length.out = 36)
+
+## Calculate control chart inputs
+subgroup.u <- dates
+point.u <- infections / linedays * 1000
+mean.u <- sum(infections) / sum(linedays) * 1000
+sigma.u <- sqrt(mean.u / linedays * 1000)
+
+## Plot control chart
+spc.plot(subgroup.u, point.u, mean.u, sigma.u, k = 3, lcl.min  = 0,
+         label.x = "Month", label.y = "Infections per 1000 line days")
+
+
+
+
+```
+
+#### *p* chart example
+
+``` {r pex, fig.height = 3.5}
+# Generate sample data
+discharges <- sample(300:500, 36)
+readmits <- rbinom(36, discharges, .2)
+dates <- seq(as.Date("2013/10/1"), by = "month", length.out = 36)
+
+# Calculate control chart inputs
+subgroup.p <- dates
+point.p <- readmits / discharges
+mean.p <- sum(readmits) / sum(discharges)
+sigma.p <- sqrt(mean.p*(1 - mean.p) / discharges)
+
+# Plot control chart
+spc.plot(subgroup.p, point.p, mean.p, sigma.p,
+         label.x = "Month", label.y = "Proportion readmitted")
+
+
+```
+
+#### *g* chart example
+
+``` {r gex, fig.height = 3.5}
+# Generate sample data
+dates <- sort(as.Date('2013/01/01') + sort(sample(1:1000, 30)))
+
+# Calculate control chart inputs
+subgroup.g <- seq(1, length(dates) - 1)
+point.g <- as.double(dates[-1] - head(dates, -1))
+mean.g <- mean(point.g)
+sigma.g <- rep(sqrt(mean.g*(mean.g+1)), length(point.g))
+
+# Plot control chart
+spc.plot(subgroup.g, point.g, mean.g, sigma.g, lcl.show = FALSE, k = 3,
+         label.x = "Infection number", label.y = "Days between infections")
+
 ```
