@@ -60,20 +60,20 @@ Statistical theory provides the basis by which we can evaluate processes to more
 
 
 ```{r ggmarg}
-set.seed(3)
-df = data.frame(x = seq(1:36), y = rnorm(36, 19, 2))
+set.seed(250)
+df = data.frame(x = seq(1:120), y = 18+rnorm(120))
 # fix(df)
 nat_var_plot = ggplot(df, aes(x, y)) + geom_line()
-ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=1)
+ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=0.5)
 ```
 
 
 ### Tips and Tricks
 
-- Carefully define your numerator and denominator. Evaluate each separately over time to see whether there are any unusual features or patterns. Sometimes patterns can occur in one or the other than disappear or are ibscured when coalesced into a rate or proportion.  
+- Carefully define your numerator and denominator. Evaluate each separately over time to see whether there are any unusual features or patterns. Sometimes patterns can occur in one or the other than disappear or are obscured when coalesced into a rate or proportion.  
 
 - The definition of your control limits depends on the trade-off between sensitivity and specificity for the question at hand. Typical control charts are built on 3&sigma; limits, which provides the optimal trade-off between sensitivity and specificity. When you need to err on the side of caution--for example, in patient safety applications--2&sigma; limits may be more appropriate. If you need to err on the side of certainty, 4-6&sigma; limits may be more useful.  
-- With fewer than 20 observations, there is an increased chance of missing special cause variation. With more than 30 observations, there's an increased chance of detecting special cause variation that is really just chance. Knowing these outcomes are possible is useful to help facilitiate careful thinking when control charts indicate special cause variation.     
+- With fewer than 20 observations, there is an increased chance of missing special cause variation. With more than 30 observations, there's an increased chance of detecting special cause variation that is really just chance. Knowing these outcomes are possible is useful to help facilitate careful thinking when control charts indicate special cause variation.     
 
 - Ensure your control limits make sense. For example, if you have proportion data and your control limits fall above 100 or below 0, there's clearly an error somewhere. Ditto with negative counts.  
 
@@ -95,7 +95,7 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=1)
 ### Which control chart? 
 
 
-![](https://github.com/Rmadillo/SCH_R_Training/blob/master/images/controlchartflowchart.png)
+![](https://github.com/Rmadillo/SCH_R_Training/blob/master/images/controlchartflowchart.png?raw=true)
 
 
 ### 
@@ -118,7 +118,8 @@ The majority of healthcare metrics of concern are rates, so the most common cont
 | Counts (with equal opportunity/constant denominator) | c chart | Poisson |
 | Proportions (with unequal opportunity/variable denominator) | p chart | binomial |
 | Proportions (with equal opportunity/constant denominator) | np chart | binomial | 
-| Rare events/Infrequent counts (with equal opportunity/constant denominator) | g chart | geometric | 
+| Rare events / infrequent counts (with equal opportunity/constant denominator) | g chart | geometric | 
+ | Time between events | t chart | Weibull |
 
 In each case, the center line will be the arithmetic mean of the data window of interest. Rather than using $\bar{x}$ abbreviation, these values are usually named for each type of chart to help emphasize the use of control limits that are *not* based on the normal distribution.    
 
@@ -132,6 +133,16 @@ Control limits (3&sigma;) are calculated as follows:
 
 **Infrequent counts (g):** $3\sqrt{g (g + 1)}$  
 
+**Time between events (t):** $2.66MR_{bar}$    
+&nbsp;&nbsp;&nbsp;&nbsp; *where*  
+&nbsp;&nbsp;&nbsp;&nbsp; $t$ = time between events, where *t* is always > 0    
+&nbsp;&nbsp;&nbsp;&nbsp; $y = t^{0.2777}$  
+&nbsp;&nbsp;&nbsp;&nbsp; $MR_{bar}$ = average moving range of *y*s, excluding those > 3.27$MR_{bar}$   
+    
+Note: t chart mean and limits can be transformed back to the original scale by raising those values to the 3.6 power. In addition, the y axis can be plotted on a log scale to make the display more symmetrical (which can be easier than explaining the how the distribution works to a decision maker).   
+    
+    
+    
 
 ### Continuous data 
 
@@ -143,12 +154,24 @@ Control limits (3&sigma;) are calculated as follows:
 
 ### Testing assumptions
 
-```{r assumpt}
+```{r assumpt, fig.height=3.5}
 # Autocorrelation
 acf(df$y)
 
 # Linear trend (not flat)
 summary(lm(y ~ x, data = df))
+
+# Monthplot
+df_ts = ts(df$y, freq=12, start=c(2010,10))
+monthplot(df_ts)
+
+# Seasonplot
+require(forecast)
+seasonplot(df_ts, year.labels.left = TRUE)
+
+# Periodogram
+TSA::periodogram(df_ts) 
+spectrum(df_ts) # not as easy to interp what freq axis is?
 ```
 
 ### Examples
@@ -175,8 +198,8 @@ spc.plot <- function(subgroup, point, mean, sigma, k = 3,
     #   label.y: Specify y-axis label.
 
     df <- data.frame(subgroup, point)
-    df$ucl <- min(ucl.max, mean + k*sigma)
-    df$lcl <- max(lcl.min, mean - k*sigma)
+    df$ucl <- pmin(ucl.max, mean + k*sigma)
+    df$lcl <- pmax(lcl.min, mean - k*sigma)
     
     p <- ggplot(data = df, aes(x = subgroup)) +
         geom_hline(yintercept = mean, col = "gray", size = 1) +
@@ -272,4 +295,3 @@ Still need limits? Use a GAM or GAMM.
 
 
 ### When to revise limits
-
