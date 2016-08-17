@@ -94,7 +94,7 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=0.5)
 - Most control charts are suited to detect large shifts in process mean. EWMA charts and CUSUM charts are sensitive to small shifts in process mean. They are not useful for detecting out of control signals.  
 
 - A control chart should measure one defined process, so you may need to create multiple charts stratified by patient population, unit, medical service, time of day etc. to avoid mixture.   
-- 
+
 
 ### Which control chart? 
 
@@ -102,9 +102,7 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=0.5)
 ![which control chart flow chart](https://github.com/Rmadillo/SCH_R_Training/blob/master/images/controlchartflowchart.png?raw=true)
 
 
-### 
-
-**Identifying possible signals of special cause variation in control charts**  
+### Tests for detecting special cause variation in control charts
 
 - *One or more points fall outside the control limit:* if the data are distributed according to the given control chart's assumptions, the probability of seeing a point outside the control limits when the process has not changed is very low.   
 - *Process shift:* Eight or more consecutive points all above or all below the mean line.  
@@ -123,7 +121,7 @@ The majority of healthcare metrics of concern are rates, so the most common cont
 | Proportions (with unequal opportunity/variable denominator) | p chart | binomial |
 | Proportions (with equal opportunity/constant denominator) | np chart | binomial | 
 | Rare events / infrequent counts (with equal opportunity/constant denominator) | g chart | geometric | 
- | Time between events | t chart | Weibull |
+| Time between events | t chart | Weibull |
 
 In each case, the center line will be the arithmetic mean of the data window of interest. Rather than using $\bar{x}$ abbreviation, these values are usually named for each type of chart to help emphasize the use of control limits that are *not* based on the normal distribution.    
 
