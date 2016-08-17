@@ -73,6 +73,7 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=0.5)
 - Carefully define your numerator and denominator. Evaluate each separately over time to see whether there are any unusual features or patterns. Sometimes patterns can occur in one or the other than disappear or are obscured when coalesced into a rate or proportion.  
 
 - The definition of your control limits depends on the trade-off between sensitivity and specificity for the question at hand. Typical control charts are built on 3&sigma; limits, which provides the optimal trade-off between sensitivity and specificity. When you need to err on the side of caution---for example, in patient safety applications---2&sigma; limits may be more appropriate. If you need to err on the side of certainty, 4-6&sigma; limits may be more useful.  
+
 - With fewer than 20 observations, there is an increased chance of missing special cause variation. With more than 30 observations, there's an increased chance of detecting special cause variation that is really just chance. Knowing these outcomes are possible is useful to help facilitate careful thinking when control charts indicate special cause variation.     
 
 - Ensure your control limits make sense. For example, if you have proportion data and your control limits fall above 100 or below 0, there's clearly an error somewhere. Ditto with negative counts.  
@@ -90,6 +91,10 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=0.5)
 - YTD comparisons don't work because they encourage naive, point-to-point comparisons and ignore natural variation---and can encourage inappropriate knee-jerk reactions. There is never useful information about a process in only one or two data points.  
 
 - CUSUM charts are very good for detecting changes in mean, but are not useful for detecting out of control signals.  
+
+- Most control charts are suited to detect large shifts in process mean. EWMA charts and CUSUM charts are sensitive to small shifts in process mean.
+
+- A control chart should measure one defined process, so you may need to create multiple charts stratified by patient population, unit, medical service, time of day etc. to avoid mixture.
 
 
 ### Which control chart? 
@@ -119,7 +124,7 @@ The majority of healthcare metrics of concern are rates, so the most common cont
 | Proportions (with unequal opportunity/variable denominator) | p chart | binomial |
 | Proportions (with equal opportunity/constant denominator) | np chart | binomial | 
 | Rare events / infrequent counts (with equal opportunity/constant denominator) | g chart | geometric | 
- | Time between events | t chart | Weibull |
+| Time between events | t chart | Weibull |
 
 In each case, the center line will be the arithmetic mean of the data window of interest. Rather than using $\bar{x}$ abbreviation, these values are usually named for each type of chart to help emphasize the use of control limits that are *not* based on the normal distribution.    
 
@@ -141,14 +146,25 @@ Control limits (3&sigma;) are calculated as follows:
     
 Note: t chart mean and limits can be transformed back to the original scale by raising those values to the 3.6 power. In addition, the y axis can be plotted on a log scale to make the display more symmetrical (which can be easier than explaining the how the distribution works to a decision maker).   
     
-    
-    
+
 
 ### Continuous data 
 
+| If your data involve... | use a ... | based on the ... distribution. | 
+| ----------------------------- | --------- | ----------------------------- | 
+| Variable average (large process shifts) | $\bar{x}$ and s chart | normal |
+| Weighted moving average (small process shifts) | EWMA chart | normal |
+| Cumulative sum (small process shifts) | CUSUM chart | normal |
 
+Control limits (3&sigma;) are calculated as follows:  
 
+**Variable averages ($\bar{x}$):** $3\frac{\bar{s}}{\sqrt{n_i}}$
 
+**Variable standard deviation (s):** $3\bar{s}\sqrt{1-c_4^2}$  
+&nbsp;&nbsp;&nbsp;&nbsp; *where* $c_4 = \sqrt{\frac{2}{n-1}}\frac{\Gamma(\frac{n}{2})}{\Gamma(\frac{n-1}{2})}$
+
+**Weighted moving average (EWMA):** $3\frac{\bar{s}}{\sqrt{n_i}}\sqrt{\frac{\lambda}{2-\lambda}[1 - (1 - \lambda)^{2i}]}$   
+&nbsp;&nbsp;&nbsp;&nbsp; *where* $\lambda$ is a weight that determines the influence of past observations. If unsure choose $\lambda = 0.2$, but $0.05 <= \lambda <= 0.3$ is acceptable.
 
 
 
@@ -222,21 +238,23 @@ set.seed(100)
 
 ```
 
-#### *u* chart example
+#### u chart example
+
+Infections per 1000 central line days
 
 ``` {r uex, fig.height = 3.5}
-## Generate sample data
-linedays <- sample(1000:2000,36)
-infections <- rpois(36, 4)
-dates <- seq(as.Date("2013/10/1"), by = "month", length.out = 36)
+# Generate sample data
+linedays <- sample(1000:2000,24)
+infections <- rpois(24, 4)
+dates <- seq(as.Date("2013/10/1"), by = "month", length.out = 24)
 
-## Calculate control chart inputs
+# Calculate u chart inputs
 subgroup.u <- dates
 point.u <- infections / linedays * 1000
 mean.u <- sum(infections) / sum(linedays) * 1000
 sigma.u <- sqrt(mean.u / linedays * 1000)
 
-## Plot control chart
+# Plot u chart
 spc.plot(subgroup.u, point.u, mean.u, sigma.u, k = 3, lcl.min  = 0,
          label.x = "Month", label.y = "Infections per 1000 line days")
 
@@ -245,42 +263,104 @@ spc.plot(subgroup.u, point.u, mean.u, sigma.u, k = 3, lcl.min  = 0,
 
 ```
 
-#### *p* chart example
+#### p chart example
+
+Proportion of patients readmitted
 
 ``` {r pex, fig.height = 3.5}
 # Generate sample data
-discharges <- sample(300:500, 36)
-readmits <- rbinom(36, discharges, .2)
-dates <- seq(as.Date("2013/10/1"), by = "month", length.out = 36)
+discharges <- sample(300:500, 24)
+readmits <- rbinom(24, discharges, .2)
+dates <- seq(as.Date("2013/10/1"), by = "month", length.out = 24)
 
-# Calculate control chart inputs
+# Calculate p chart inputs
 subgroup.p <- dates
 point.p <- readmits / discharges
 mean.p <- sum(readmits) / sum(discharges)
 sigma.p <- sqrt(mean.p*(1 - mean.p) / discharges)
 
-# Plot control chart
+# Plot p chart
 spc.plot(subgroup.p, point.p, mean.p, sigma.p,
          label.x = "Month", label.y = "Proportion readmitted")
 
 
 ```
 
-#### *g* chart example
+#### g chart example
+
+Days between infections
 
 ``` {r gex, fig.height = 3.5}
 # Generate sample data
-dates <- sort(as.Date('2013/01/01') + sort(sample(1:1000, 30)))
+dates <- sort(as.Date('2013/01/01') + sort(sample(1:1000, 24)))
 
-# Calculate control chart inputs
+# Calculate g chart inputs
 subgroup.g <- seq(1, length(dates) - 1)
 point.g <- as.double(dates[-1] - head(dates, -1))
 mean.g <- mean(point.g)
 sigma.g <- rep(sqrt(mean.g*(mean.g+1)), length(point.g))
 
-# Plot control chart
+# Plot g chart
 spc.plot(subgroup.g, point.g, mean.g, sigma.g, lcl.show = FALSE, k = 3,
          label.x = "Infection number", label.y = "Days between infections")
+
+```
+
+#### $\bar{x}$ and s chart example
+
+Patient wait times
+
+``` {r xex, fig.height = 3.5}
+
+# Generate sample data
+waits <- rnorm(5000, 24, 5)
+months <- strftime(sort(as.Date('2013-10-01') + sample(0:1000, 5000, TRUE)), "%Y-%m-01")
+sample.n <- as.numeric(table(months))
+dfw <- data.frame(months, waits)
+ 
+# Calculate control chart inputs
+subgroup.x <- as.Date(unique(months))
+subgroup.s <- subgroup.x
+point.x <- aggregate(dfw$waits, by = list(months), FUN=mean, na.rm = TRUE)$x
+point.s <- aggregate(dfw$waits, by = list(months), FUN=sd, na.rm = TRUE)$x
+mean.x <- mean(waits)
+mean.s <- sqrt(sum((sample.n - 1)*point.s^2) / (sum(sample.n) - length(sample.n)))
+sigma.x <- mean.s / sqrt(sample.n)
+c4 <- sqrt(2 / (sample.n - 1)) * gamma(sample.n / 2) / gamma((sample.n - 1)/2)
+sigma.s <- mean.s * sqrt(1 - c4^2)
+
+# Plot s chart
+spc.plot(subgroup.s, point.s, mean.s, sigma.s, k = 3,
+         label.x = "Month", label.y = "Wait times standard deviation (s)")
+
+# Plot xbar chart
+spc.plot(subgroup.x, point.x, mean.x, sigma.x, k = 3,
+         label.x = "Month", label.y = "Wait times average(x)")
+
+```
+
+#### EWMA chart example
+Patient wait times (continued)
+
+``` {r ewmaex, fig.height = 3.5}
+
+# Use generated sample data from xbar chart example
+
+# Calculate control chart inputs
+subgroup.z <- subgroup.x
+lambda = 0.2
+point.z <- matrix( , length(point.x))
+point.z[1] <- mean.x
+for (i in 2:length(point.z)) {
+    point.z[i] = lambda * point.x[i] + (1 - lambda) * point.z[i-1]
+    }
+mean.z <- mean.x
+sigma.z <- (mean.s / sqrt(sample.n)) * 
+    sqrt(lambda/(2-lambda) * (1 - (1-lambda)^(seq(1:length(point.z)))))
+
+# Plot EWMA chart
+spc.plot(subgroup.z, point.z, mean.z, sigma.z, k = 3, 
+         label.x = "Month", label.y = "Wait times averages (x)")
 
 ```
 
