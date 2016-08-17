@@ -12,7 +12,7 @@ require(ggExtra)
 
 # Guidance on the Use of Control Charts for Quality Improvement and Monitoring
 
-Every process has natural variation--*noise*--included as an inherent part of that process. True signals emerge only when you have properly characterized that variation.  
+Every process has natural variation---*noise*---included as an inherent part of that process. True signals emerge only when you have properly characterized that variation.  
 
 Control charts are meant to help you identify departures from a **stable** process. Run charts help you monitor any sort of time series data.  
 
@@ -59,7 +59,7 @@ Statistical theory provides the basis by which we can evaluate processes to more
 
 
 
-```{r ggmarg}
+```{r ggmarg, fig.width=10}
 set.seed(250)
 df = data.frame(x = seq(1:120), y = 18+rnorm(120))
 # fix(df)
@@ -72,7 +72,7 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=0.5)
 
 - Carefully define your numerator and denominator. Evaluate each separately over time to see whether there are any unusual features or patterns. Sometimes patterns can occur in one or the other than disappear or are obscured when coalesced into a rate or proportion.  
 
-- The definition of your control limits depends on the trade-off between sensitivity and specificity for the question at hand. Typical control charts are built on 3&sigma; limits, which provides the optimal trade-off between sensitivity and specificity. When you need to err on the side of caution--for example, in patient safety applications--2&sigma; limits may be more appropriate. If you need to err on the side of certainty, 4-6&sigma; limits may be more useful.  
+- The definition of your control limits depends on the trade-off between sensitivity and specificity for the question at hand. Typical control charts are built on 3&sigma; limits, which provides the optimal trade-off between sensitivity and specificity. When you need to err on the side of caution---for example, in patient safety applications---2&sigma; limits may be more appropriate. If you need to err on the side of certainty, 4-6&sigma; limits may be more useful.  
 - With fewer than 20 observations, there is an increased chance of missing special cause variation. With more than 30 observations, there's an increased chance of detecting special cause variation that is really just chance. Knowing these outcomes are possible is useful to help facilitate careful thinking when control charts indicate special cause variation.     
 
 - Ensure your control limits make sense. For example, if you have proportion data and your control limits fall above 100 or below 0, there's clearly an error somewhere. Ditto with negative counts.  
@@ -85,9 +85,9 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=0.5)
 
 - For raw ordinal data (such as likert scores), do not use means or control limits. Just. Don't. If you must plot a single value, convert to a proportion (e.g., "top box scores") first. However, stacked bar or mosaic charts describe this kind of data much better, and can be done in the same amount of space.    
 
-- Control charts don't measure "statistical significance"--they are meant to reduce the chances of incorrectly deciding whether a process is in control or not. Control limits are *not* confidence limits.     
+- Control charts don't measure "statistical significance"---they are meant to reduce the chances of incorrectly deciding whether a process is in control or not. Control limits are *not* confidence limits.     
 
-- YTD comparisons don't work because they encourage naive, point-to-point comparisons and ignore natural variation--and can encourage inappropriate knee-jerk reactions. There is never useful information about a process in only one or two data points.  
+- YTD comparisons don't work because they encourage naive, point-to-point comparisons and ignore natural variation---and can encourage inappropriate knee-jerk reactions. There is never useful information about a process in only one or two data points.  
 
 - CUSUM charts are very good for detecting changes in mean, but are not useful for detecting out of control signals.  
 
@@ -295,3 +295,5 @@ Still need limits? Use a GAM or GAMM.
 
 
 ### When to revise limits
+
+When you have at least 20 data points since an intervention, and there is evidence that the intervention changed the process. 
