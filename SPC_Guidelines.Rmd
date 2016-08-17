@@ -35,7 +35,7 @@ In all cases, *never* rely on a table to evaluate process performance. Tables ca
 | You do not understand one or more of the statistical issues discussed in the control chart column | |
 
 
-### Run charts
+## Run charts
 
 Run charts are meant to show variation and trends over time (or in sequence). They do not rely on parametric statistical theory, so they cannot distinguish between common cause and special cause variation. However, improperly-constructed control charts can't either, so run charts can be more readily used where statistical knowledge is limited. So while run charts are not as always as powerful as control charts, they can still provide practical monitoring and useful insights into the process.  
 
@@ -48,12 +48,13 @@ Any metric can be tracked with a run chart.
 - *"Astronomical" data point:* a point so different from the rest that anyone would agree that the value is unusual.  
 - *Process shift:* Six or more consecutive points all above or all below the median line.  
 - *Trend:* Five or more consecutive points all increasing or all decreasing.  
-- *Number of runs:* A run is a set of data points on one side of the median line. Too many or too few runs suggest a pattern inconsistent with natural variation. See Appendix 1 for a table of what constitutes too many/few runs for a given number of data points.    
+- *Number of runs:* A run is a set of data points on one side of the median line. Too many or too few runs suggest a pattern inconsistent with natural variation. See Appendix 1 for a table of what constitutes too many/few runs for a given number of data points in a run chart.      
 
+## Control charts
 
 ### Natural variation and control charts
 
-Understanding natural variation in time series data is the essential point of quality assurance or process improvement effort. It's a rookie mistake to use control charts to focus solely on the values themselves or their central tendency.  
+Understanding natural variation in time series data is the essential point of quality assurance or process improvement efforts. It's a rookie mistake to use control charts to focus solely on the values themselves or their central tendency.  
 
 Statistical theory provides the basis by which we can evaluate processes to more confidently detect changes in process amongst the noise of natural variation.  
 
@@ -72,7 +73,8 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=0.5)
 
 - Carefully define your numerator and denominator. Evaluate each separately over time to see whether there are any unusual features or patterns. Sometimes patterns can occur in one or the other than disappear or are obscured when coalesced into a rate or proportion.  
 
-- The definition of your control limits depends on the trade-off between sensitivity and specificity for the question at hand. Typical control charts are built on 3&sigma; limits, which provides the optimal trade-off between sensitivity and specificity. When you need to err on the side of caution---for example, in patient safety applications---2&sigma; limits may be more appropriate. If you need to err on the side of certainty, 4-6&sigma; limits may be more useful.  
+- The definition of your control limits depends on the trade-off between sensitivity and specificity for the question at hand. Typical control charts are built on 3&sigma; limits, which provides the optimal trade-off between sensitivity and specificity, that is, between under- and over-reacting to an indication of special cause variation. When you need to err on the side of caution---for example, in patient safety applications---2&sigma; limits may be more appropriate, while understanding that false positives will be higher. If you need to err on the side of certainty, 4-6&sigma; limits may be more useful.  
+
 - With fewer than 20 observations, there is an increased chance of missing special cause variation. With more than 30 observations, there's an increased chance of detecting special cause variation that is really just chance. Knowing these outcomes are possible is useful to help facilitate careful thinking when control charts indicate special cause variation.     
 
 - Ensure your control limits make sense. For example, if you have proportion data and your control limits fall above 100 or below 0, there's clearly an error somewhere. Ditto with negative counts.  
@@ -85,7 +87,7 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=0.5)
 
 - For raw ordinal data (such as likert scores), do not use means or control limits. Just. Don't. If you must plot a single value, convert to a proportion (e.g., "top box scores") first. However, stacked bar or mosaic charts describe this kind of data much better, and can be done in the same amount of space.    
 
-- Control charts don't measure "statistical significance"---they are meant to reduce the chances of incorrectly deciding whether a process is in control or not. Control limits are *not* confidence limits.     
+- Control charts don't measure "statistical significance"---they are meant to reduce the chances of incorrectly deciding whether a process is in (statistical) control or not. Control limits are *not* confidence limits.     
 
 - YTD comparisons don't work because they encourage naive, point-to-point comparisons and ignore natural variation---and can encourage inappropriate knee-jerk reactions. There is never useful information about a process in only one or two data points.  
 
@@ -286,10 +288,22 @@ spc.plot(subgroup.g, point.g, mean.g, sigma.g, lcl.show = FALSE, k = 3,
 
 ### When assumptions fail
 
+Because trends are an indication of special cause, control limits don't make sense around trending data, and calculation of center lines and control limits will be incorrect. Thus, tests for special causes other than trending will also be invalid. Restart control limits after the trend has stabilized.    
 
-Use a run chart, and do not rely on the runs or process shift rules. 
+When data are autocorrelated, control limits from the above chart types will be *too small*---and thus an increase in *false* signals of special causes should be expected. In addition, none of the tests for special causes remain valid.    
 
-Still need limits? Use a GAM or GAMM.
+
+Differencing?  
+
+
+Seasonal adjustment?  
+
+
+Use a run chart, and do not rely on the runs or process shift rules.  
+
+
+Still need limits? Use a GAM (trending/seasonal data, not autocorrelated) or GAMM (autocorrelated data) or time series models (ARIMA, explore residuals).  
+
 
 
 
@@ -297,3 +311,15 @@ Still need limits? Use a GAM or GAMM.
 ### When to revise limits
 
 When you have at least 20 data points since an intervention, and there is evidence that the intervention changed the process. 
+
+Intervention/changepoint analysis  
+
+Variance changes  
+
+Use common sense and avoid urge to change for every intervention unless evidence is clear  
+
+
+
+#### Appendix 1: Expected run counts for run charts
+
+(link to table somewhere on web hopefully)
