@@ -48,7 +48,6 @@ Any metric can be tracked with a run chart.
 - *"Astronomical" data point:* a point so different from the rest that anyone would agree that the value is unusual.  
 - *Process shift:* Six or more consecutive points all above or all below the median line.  
 - *Trend:* Five or more consecutive points all increasing or all decreasing.  
-- *Number of runs:* A run is a set of data points on one side of the median line. Too many or too few runs suggest a pattern inconsistent with natural variation. See Appendix 1 for a table of what constitutes too many/few runs for a given number of data points in a run chart.      
 
 ## Control charts
 
@@ -107,7 +106,97 @@ ggMarginal(nat_var_plot, margins="y", type = "histogram", binwidth=0.5)
 - *One or more points fall outside the control limit:* if the data are distributed according to the given control chart's assumptions, the probability of seeing a point outside the control limits when the process has not changed is very low.   
 - *Process shift:* Eight or more consecutive points all above or all below the mean line.  
 - *Trend:* Seven or more consecutive points all increasing or all decreasing.  
-- *Number of runs:* A run is a set of data points on one side of the mean line. Too many or too few runs suggest a pattern inconsistent with natural variation. See Appendix 1 for a table of what constitutes too many/few runs for a given number of data points.    
+- *1$\sigma$ signal:* Four of five consecutive points are more than one standard deviation away from the mean.
+- *2$\sigma$ signal:* Two of three consecutive points are more than two standard deviations away from the mean.
+- *Number of runs:* A run is a set of data points on one side of the mean line. Too many or too few runs suggest a pattern inconsistent with natural variation. See Appendix 1 for a table of what constitutes too many/few runs for a given number of data points.
+
+``` {r sgnlex, echo = FALSE, fig.height = 3.5}
+
+spc.plot <- function(subgroup, point, mean, sigma, k = 3,
+                     ucl.show = TRUE, lcl.show = TRUE, ucl.max = Inf, lcl.min = -Inf,
+                     label.x = "Subgroup", label.y = "Value", band.show = TRUE)
+{
+    # Plots control chart with ggplot
+    # 
+    # Args:
+    #   subgroup: Subgroup definition (for x-axis)
+    #   point: Subgroup sample values (for y-axis)
+    #   mean: Process mean value (for center line)
+    #   sigma: Process variation value (for control limits)
+    #   k: Specification for k-sigma limits above and below center line.
+    #      Default is 3.
+    #   ucl.show: Visible upper control limit? Default is true.
+    #   lcl.show: Visible lower control limit? Default is true.
+    #   ucl.max: Maximum feasible value for upper control limit.
+    #   lcl.min: Minimum feasible value for lower control limit.
+    #   label.x: Specify x-axis label
+    #   label.y: Specify y-axis label.
+
+    df <- data.frame(subgroup, point)
+    df$ucl <- pmin(ucl.max, mean + k*sigma)
+    df$lcl <- pmax(lcl.min, mean - k*sigma)
+    df$outofcontrol <- point > df$ucl | point < df$lcl
+    
+    p <- ggplot(data = df, aes(x = subgroup)) +
+        geom_hline(yintercept = mean, col = "gray", size = 1)
+    
+    if (ucl.show) {
+        p <- p + geom_line(aes(y = ucl), col = "red")
+    }
+    
+    if (lcl.show) {
+        p <- p + geom_line(aes(y = lcl), col = "red")
+    }
+    
+    if (band.show) {
+        p <- p + 
+            geom_ribbon(aes(ymin = mean + sigma, 
+                            ymax = mean + 2*sigma), alpha = 0.2) +
+            geom_ribbon(aes(ymin = pmax(lcl.min, mean - 2*sigma),  
+                            ymax = mean - sigma), alpha = 0.2)
+    }
+    
+    p + 
+        geom_line(aes(y = point), col = "blue") +
+        geom_point(aes(y = point, col = outofcontrol)) +
+        scale_color_manual(values = c("blue", "red"), guide = FALSE) +
+        labs(x = label.x, y =label.y) +
+        theme_bw()
+}
+
+# Example points for signal rules of thumb
+point.signal <- c(-0.36, -0.25, 1.07, 0.67, -1.07, 0.04, -0.72, 1.82, -1.50, -1.29)
+point.signal[11] <- 3.4
+point.signal[12:14] <- c(-2.3, -1.5, -2.5)
+point.signal[15:19] <- c(1.4, 1.8, 1.3, 0.2, 1.6)
+point.signal[20:27] <- c(-0.8, -0.9, -0.2, -1.5, -1.2, -0.3, -1.1, -.5)
+point.signal[28:34] <- c(-.3, 0, 0.3, 0.4, 1.1, 1.9, 2.2)
+
+subgroup.signal <- 1:34
+mean.signal <- 0
+sigma.signal <- rep(1,34)
+
+sig1 <- as.character(expression(1~sigma~signal))
+sig2 <- as.character(expression(2~sigma~signal))
+
+spc.plot(subgroup.signal, point.signal, mean.signal, sigma.signal) +
+    geom_curve(x = 0.5, xend = 10.5, y = -0.5, yend = -1.5, linetype = 2) +
+    annotate('text', x = 5, y = -2.3, label = 'Normal variation') +
+    geom_curve(x = 10, xend = 12, y = 3.2, yend = 3.2, curvature = -1, linetype = 2) +
+    annotate('text', x = 9.5, y = 3.4, label = 'Out of control', hjust = 1) +
+    geom_curve(x = 11.5, xend = 14.5, y = -2.5, yend = -2.5, linetype = 2) +
+    annotate('text', x = 14.5, y = -2.8, parse = TRUE, label = sig2, hjust = 0) +
+    geom_curve(x = 14.5, xend = 19.5, y = 1.5, yend = 1.5, curvature = -1, linetype = 2) +
+    annotate('text', x = 17, y = 2.8, parse = TRUE, label = sig1) +
+    geom_curve(x = 19.5, xend = 27, y = -1, yend = -1, curvature = 0.7, linetype = 2) +
+    annotate('text', x = 23, y = -2.3, label = 'Process shift') +
+    geom_curve(x = 26.5, xend = 34, y = -0.5, yend = 2.5, curvature = -0.2, linetype = 2) +
+    annotate('text', x = 28, y = 1.3, label = 'Trend', angle = 45) +
+    theme(panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank()) +
+    scale_y_continuous(breaks = seq(-3,3))
+
+
+```
 
 
 ### Count, proportion, or rate data
@@ -188,69 +277,23 @@ spectrum(df_ts) # not as easy to interp what freq axis is?
 
 ### Examples
 
-``` {r plotfunc, echo = FALSE}
-spc.plot <- function(subgroup, point, mean, sigma, k = 3,
-                     ucl.show = TRUE, lcl.show = TRUE, ucl.max = Inf, lcl.min = -Inf,
-                     label.x = "Subgroup", label.y = "Value")
-{
-    # Plots control chart with ggplot
-    # 
-    # Args:
-    #   subgroup: Subgroup definition (for x-axis)
-    #   point: Subgroup sample values (for y-axis)
-    #   mean: Process mean value (for center line)
-    #   sigma: Process variation value (for control limits)
-    #   k: Specification for k-sigma limits above and below center line.
-    #      Default is 3.
-    #   ucl.show: Visible upper control limit? Default is true.
-    #   lcl.show: Visible lower control limit? Default is true.
-    #   ucl.max: Maximum feasible value for upper control limit.
-    #   lcl.min: Minimum feasible value for lower control limit.
-    #   label.x: Specify x-axis label
-    #   label.y: Specify y-axis label.
-
-    df <- data.frame(subgroup, point)
-    df$ucl <- pmin(ucl.max, mean + k*sigma)
-    df$lcl <- pmax(lcl.min, mean - k*sigma)
-    
-    p <- ggplot(data = df, aes(x = subgroup)) +
-        geom_hline(yintercept = mean, col = "gray", size = 1) +
-        geom_line(aes(y = point), col = "blue") +
-        geom_point(aes(y = point), col = "blue") +
-        labs(x = label.x, y =label.y)
-    
-    if (ucl.show) {
-        p <- p + geom_line(aes(y = ucl), col = "red")
-    }
-    
-    if (lcl.show) {
-        p <- p + geom_line(aes(y = lcl), col = "red")
-    }
-    
-    p
-}
-
-set.seed(100)
-
-```
-
 #### *u* chart example
 
 *Infections per 1000 central line days*  
 
 ``` {r uex, fig.height = 3.5}
-## Generate sample data
+# Generate sample data
 linedays <- sample(1000:2000,24)
 infections <- rpois(24, 4)
 dates <- seq(as.Date("2013/10/1"), by = "month", length.out = 24)
 
-## Calculate u chart inputs
+# Calculate u chart inputs
 subgroup.u <- dates
 point.u <- infections / linedays * 1000
 mean.u <- sum(infections) / sum(linedays) * 1000
 sigma.u <- sqrt(mean.u / linedays * 1000)
 
-## Plot u chart
+# Plot u chart
 spc.plot(subgroup.u, point.u, mean.u, sigma.u, k = 3, lcl.min  = 0,
          label.x = "Month", label.y = "Infections per 1000 line days")
 
@@ -354,7 +397,7 @@ sigma.z <- (mean.s / sqrt(sample.n)) *
  
 # Plot EWMA chart
 spc.plot(subgroup.z, point.z, mean.z, sigma.z, k = 3, 
-          label.x = "Month", label.y = "Wait times averages (x)")
+          label.x = "Month", label.y = "Wait times moving average")
  
  ```
  
