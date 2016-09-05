@@ -37,16 +37,18 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
-require(ggplot2)
 require(ggExtra)
 
 ```
 
-``` {r sgnlex, echo = FALSE, fig.height = 3.5}
+``` {r spccode, echo = FALSE, fig.height = 3.5}
+
+require(ggplot2)
 
 spc.plot <- function(subgroup, point, mean, sigma, k = 3,
-                     ucl.show = TRUE, lcl.show = TRUE, ucl.max = Inf, lcl.min = -Inf,
-                     label.x = "Subgroup", label.y = "Value", band.show = TRUE)
+                     ucl.show = TRUE, lcl.show = TRUE, band.show = TRUE,
+                     ucl.max = Inf, lcl.min = -Inf,
+                     label.x = "Subgroup", label.y = "Value")
 {
     # Plots control chart with ggplot
     # 
@@ -59,10 +61,12 @@ spc.plot <- function(subgroup, point, mean, sigma, k = 3,
     #      Default is 3.
     #   ucl.show: Visible upper control limit? Default is true.
     #   lcl.show: Visible lower control limit? Default is true.
+    #   band.show: Visible bands between 1-2 sigma limits?  Default is true.
     #   ucl.max: Maximum feasible value for upper control limit.
     #   lcl.min: Minimum feasible value for lower control limit.
-    #   label.x: Specify x-axis label
+    #   label.x: Specify x-axis label.
     #   label.y: Specify y-axis label.
+
 
     df <- data.frame(subgroup, point)
     df$ucl <- pmin(ucl.max, mean + k*sigma)
@@ -96,8 +100,12 @@ spc.plot <- function(subgroup, point, mean, sigma, k = 3,
         theme_bw()
 }
 
+```
+
+``` {r sgnlex, echo = FALSE, fig.height = 3.5}
+
 # Example points for signal rules of thumb
-point.signal <- c(-0.36, -0.25, 1.07, 0.67, -1.07, 0.04, -0.72, 1.82, -1.50, -1.29)
+point.signal <- c(0.36, -0.25, 1.07, 0.67, -1.07, 0, 0.72, 1.82, -1.50, -1.29)
 point.signal[11] <- 3.4
 point.signal[12:14] <- c(-2.3, -1.5, -2.5)
 point.signal[15:19] <- c(1.4, 1.8, 1.3, 0.2, 1.6)
@@ -433,9 +441,11 @@ Control limits (3&sigma;) are calculated as follows:
 
 ``` {r xex, fig.height = 3.5}
 
+set.seed(777)
+
 # Generate sample data
-waits <- rnorm(5000, 24, 5)
-months <- strftime(sort(as.Date('2013-10-01') + sample(0:1000, 5000, TRUE)), "%Y-%m-01")
+waits <- c(rnorm(1700, 30, 5), rnorm(650, 29.5, 5))
+months <- strftime(sort(as.Date('2013-10-01') + sample(0:729, length(waits), TRUE)), "%Y-%m-01")
 sample.n <- as.numeric(table(months))
 dfw <- data.frame(months, waits)
 
@@ -465,7 +475,7 @@ spc.plot(subgroup.x, point.x, mean.x, sigma.x, k = 3,
 #### EWMA chart example
 
 **3&sigma; control limits for exponentially weighted moving average (EWMA):**  $3\frac{\bar{s}}{\sqrt{n_i}}\sqrt{\frac{\lambda}{2-\lambda}[1 - (1 - \lambda)^{2i}]}$   
-&nbsp;&nbsp;&nbsp;&nbsp; *where* $\lambda$ is a weight that determines the influence of past observations. If unsure choose $\lambda = 0.2$, but $0.05 <= \lambda <= 0.3$ is acceptable.
+&nbsp;&nbsp;&nbsp;&nbsp; *where* $\lambda$ is a weight that determines the influence of past observations. If unsure choose $\lambda = 0.2$, but $0.05 \leq \lambda \leq 0.3$ is acceptable.
 
 <br/>  
 
@@ -488,7 +498,7 @@ sigma.z <- (mean.s / sqrt(sample.n)) *
      sqrt(lambda/(2-lambda) * (1 - (1-lambda)^(seq(1:length(point.z)))))
  
 # Plot EWMA chart
-spc.plot(subgroup.z, point.z, mean.z, sigma.z, k = 3, 
+spc.plot(subgroup.z, point.z, mean.z, sigma.z, k = 3, band.show = FALSE,
           label.x = "Month", label.y = "Wait times moving average")
  
 ```
@@ -497,7 +507,49 @@ spc.plot(subgroup.z, point.z, mean.z, sigma.z, k = 3,
 
 #### CUSUM example
 
-**NEED TO ADD STUFF HERE**  
+Lower and upper cumulative sums are calculated as follows:
+
+$S_{l,i} = -\max{[0, -z_i -k + S_{l,i-1}]},$  
+$S_{h,i} = \max{[0, z_i -k + S_{h,i-1}]}$  
+&nbsp;&nbsp;&nbsp;&nbsp; *where* $z_i$ is the standardized normal score for subgroup $i$ and $0.5 \leq k \leq 1$ is a slack value.  It is common to choose "decision limits" $\pm 4$ or $\pm 5$.
+
+<br/>  
+
+
+``` {r cusumex, fig.height = 3.5}
+
+# Use generated sample data from xbar chart example
+
+# Calculate control chart inputs
+subgroup.cusum <- subgroup.x
+slack = 0.5
+
+zscore <- (point.x - mean.x)/sigma.x
+point.cusuml <- matrix(, length(zscore))
+point.cusuml[1] <- -max(0, -zscore[1] - slack)
+
+for (i in 2:length(point.cusuml)) {
+    point.cusuml[i] <- -max(0, -zscore[i] - slack - point.cusuml[i-1])
+}
+
+point.cusumh <- matrix(, length(zscore))
+point.cusumh[1] <- max(0, zscore[1] - slack)
+
+for (i in 2:length(point.cusuml)) {
+    point.cusumh[i] <- max(0, zscore[i] - slack - point.cusumh[i-1])
+}
+
+mean.cusum <- 0
+sigma.cusum <- rep(1, length(subgroup.cusum))
+
+# Plot CUSUM chart
+lower.plot <- spc.plot(subgroup.cusum, point.cusuml, mean.cusum, sigma.cusum, k = 5, 
+         band.show = FALSE, label.y = "Cumulative sum")
+
+lower.plot + geom_line(aes(y = point.cusumh), col = "blue") +
+    geom_point(aes(y = point.cusumh), col = "blue")
+
+```
 
 <br/>  
 
@@ -568,57 +620,4 @@ Use common sense and avoid urge to change for every intervention unless evidence
 ## Appendix 2: R code for SPC plots {#appendix2}
 
 ```{r spccode, echo=TRUE, eval=FALSE}
-require(ggplot2)
-
-spc.plot <- function(subgroup, point, mean, sigma, k = 3,
-                     ucl.show = TRUE, lcl.show = TRUE, ucl.max = Inf, lcl.min = -Inf,
-                     label.x = "Subgroup", label.y = "Value", band.show = TRUE)
-{
-    # Plots control chart with ggplot
-    # 
-    # Args:
-    #   subgroup: Subgroup definition (for x-axis)
-    #   point: Subgroup sample values (for y-axis)
-    #   mean: Process mean value (for center line)
-    #   sigma: Process variation value (for control limits)
-    #   k: Specification for k-sigma limits above and below center line.
-    #      Default is 3.
-    #   ucl.show: Visible upper control limit? Default is true.
-    #   lcl.show: Visible lower control limit? Default is true.
-    #   ucl.max: Maximum feasible value for upper control limit.
-    #   lcl.min: Minimum feasible value for lower control limit.
-    #   label.x: Specify x-axis label
-    #   label.y: Specify y-axis label.
-
-    df <- data.frame(subgroup, point)
-    df$ucl <- pmin(ucl.max, mean + k*sigma)
-    df$lcl <- pmax(lcl.min, mean - k*sigma)
-    df$outofcontrol <- point > df$ucl | point < df$lcl
-    
-    p <- ggplot(data = df, aes(x = subgroup)) +
-        geom_hline(yintercept = mean, col = "gray", size = 1)
-    
-    if (ucl.show) {
-        p <- p + geom_line(aes(y = ucl), col = "red")
-    }
-    
-    if (lcl.show) {
-        p <- p + geom_line(aes(y = lcl), col = "red")
-    }
-    
-    if (band.show) {
-        p <- p + 
-            geom_ribbon(aes(ymin = mean + sigma, 
-                            ymax = mean + 2*sigma), alpha = 0.2) +
-            geom_ribbon(aes(ymin = pmax(lcl.min, mean - 2*sigma),  
-                            ymax = mean - sigma), alpha = 0.2)
-    }
-    
-    p + 
-        geom_line(aes(y = point), col = "blue") +
-        geom_point(aes(y = point, col = outofcontrol)) +
-        scale_color_manual(values = c("blue", "red"), guide = FALSE) +
-        labs(x = label.x, y =label.y) +
-        theme_bw()
-}
 ```
