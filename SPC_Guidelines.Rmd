@@ -6,10 +6,10 @@ output: html_document
 
 ### Seattle Children's Hospital  
 
-[Dwight Barry, PhD](mailto:dwight.barry@seattlechildrens.org&subject=SPC%20Guidelines)   
+[Dwight Barry, PhD](mailto:EMAIL@COMPANY.org&subject=SPC%20Guidelines)   
 *Enterprise Analytics*   
 
-[Brendan Bettinger, PhD](mailto:brendan.bettinger@seattlechildrens.org&subject=SPC%20Guidelines)  
+[Brendan Bettinger, PhD](mailto:EMAIL@COMPANY.org&subject=SPC%20Guidelines)  
 *Infection Prevention*  
 
 
