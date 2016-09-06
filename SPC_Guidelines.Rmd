@@ -258,7 +258,7 @@ ggMarginal(nat_var_cc_plot, margins="y", type = "histogram", binwidth=0.5)
 
 The following flow chart can help you determine which kind of control chart you might want to use.  
 
-![](https://github.com/Rmadillo/SCH_R_Training/blob/master/images/controlchartflowchart.png?raw=true)
+![](https://github.com/Rmadillo/SCH_R_Training/blob/master/images/control_chart_flowchart.png?raw=true)
 
 More details and formulas for each control chart type are provided in the [Control Chart Creation Details](#part2) section.   
 
