@@ -24,7 +24,7 @@ output: html_document
 [Control Chart Creation Details](#part2)  
 &nbsp;&nbsp;[Count, proportion, or rate data](#attribute)  
 &nbsp;&nbsp;[Continuous data](#numeric)  
-[Useful References](#useful)
+[Useful References](#useful)  
 [Advanced Guidance](#part3)  
 &nbsp;&nbsp;[Testing assumptions](#testassumptions)  
 &nbsp;&nbsp;[When assumptions fail](#assumptionsfail)  
@@ -575,6 +575,8 @@ lower.plot + geom_line(aes(y = point.cusumh), col = "blue") +
 
 - Finally, some important warnings about when control charts fail (and a useful alternative) can be found in Morton et al. 2009, [Hospital adverse events and control charts: the need for a new paradigm](http://www.journalofhospitalinfection.com/article/S0195-6701(09)00340-5/abstract), *Journal of Hospital Infection* 73(3):225–231, as well as in Morton et al. 2007, [New control chart methods for monitoring MROs in Hospitals](https://www.researchgate.net/profile/Edward_Tong2/publication/43477704_New_control_chart_methods_for_monitoring_MROs_in_hospitals/links/5600d22e08aec948c4fa93cd.pdf), *Australian Infection Control* 12(1):14-18.    
 
+<p align="right"><small>[*back to top*](#top)</small></p>  
+
 ## Advanced Guidance {#part3}
 
 ### Testing assumptions {#testassumptions}
@@ -641,3 +643,5 @@ Use common sense and avoid urge to change for every intervention unless evidence
 
 ```{r spccode, echo=TRUE, eval=FALSE}
 ```
+
+<p align="right"><small>[*back to top*](#top)</small></p>  
