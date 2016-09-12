@@ -24,7 +24,7 @@ output: html_document
 [Control Chart Creation Details](#part2)  
 &nbsp;&nbsp;[Count, proportion, or rate data](#attribute)  
 &nbsp;&nbsp;[Continuous data](#numeric)  
-[Useful References](#useful)  
+[Useful References](#useful)    
 [Advanced Guidance](#part3)  
 &nbsp;&nbsp;[Testing assumptions](#testassumptions)  
 &nbsp;&nbsp;[When assumptions fail](#assumptionsfail)  
@@ -173,23 +173,21 @@ In addition, *never* rely on a table or year-to-date comparisons to evaluate pro
 | **Identifying possible signals of change in run charts** | **Tests for detecting special cause variation in control charts** |
 | *"Astronomical" data point:* a point so different from the rest that anyone would agree that the value is unusual. | *One or more points fall outside the control limit:* if the data are distributed according to the given control chart's assumptions, the probability of seeing a point outside the control limits when the process has not changed is very low. |
 | *Process shift:* $log_2(n) + 3$ data points are all above or all below the median line. | *Process shift:* Eight or more consecutive points all above or all below the mean line. |
-| *Number of crossings:* A run is a set of data points on one side of the median line. Too many or too few median line crossings suggest a pattern inconsistent with natural variation.  | *Trend:* Seven or more consecutive points all increasing or all decreasing (though this is usually ineffective).  | 
+| *Number of crossings:* A run is a set of data points on one side of the median line. Too many or too few median line crossings suggest a pattern inconsistent with natural variation.  | *Trend:* Seven or more consecutive points all increasing or all decreasing (though this is usually ineffective\*).  | 
 | *Cycles:* There are obvious cycles that are not linked to known causes such as seasonality. | *Cycles:* There are obvious cycles of any sort. | 
 | | *Reduced variation:* Eight or more consecutive points all within 1$\sigma$. | 
 | | *1$\sigma$ signal:* Four of five consecutive points are more than one standard deviation away from the mean. | 
 | | *2$\sigma$ signal:* Two of three consecutive points are more than two standard deviations away from the mean. |
 
-
+\**Note: Although many people use a "trend" test in association with run and control charts, research has shown this test to be ineffective (see [Useful References](#useful)).*   
 
 <p align="right"><small>[*back to top*](#top)</small></p>    
 
 ### Which should I use: a run chart or a control chart? {#which}
 
-A run chart can monitor a metric or a process, while a control chart monitors a process. 
-
-Always create a run chart. Create a control chart only if you meet the necessary conditions.  
-
-In both cases, the data points must be independent, that is, the position of one point does not influence the position of another point: there is no (serious) autocorrelation. If the data are autocorrelated, the guidelines for testing run or control charts can be invalid, which can lead to poor decision-making.   
+- A run chart can monitor a metric or a process, while a control chart monitors a process. 
+- Always create a run chart. Create a control chart only if you meet the necessary conditions.  
+- In both cases, the data points must be independent, that is, the position of one point does not influence the position of another point: there is no (serious) autocorrelation. If the data are autocorrelated, the guidelines for testing run or control charts can be invalid, which can lead to poor decision-making.   
 
 
 | Use a run chart if | Use a control chart (only) if |
@@ -208,17 +206,14 @@ In both cases, the data points must be independent, that is, the position of one
 
 ## Run charts {#runcharts}
 
-Run charts are meant to show variation and trends over time (or in sequence). They do not rely on parametric statistical theory, so they cannot distinguish between common cause and special cause variation. However, improperly-constructed control charts can't either, so run charts can be more readily used where statistical knowledge is limited. So while run charts are not as always as powerful as control charts, they can still provide practical monitoring and useful insights into the process.
+Run charts are meant to show a metric of interest over time. They do not rely on parametric statistical theory, so they cannot distinguish between common cause and special cause variation. However, improperly-constructed control charts can't either, so run charts can be more readily used where statistical knowledge is limited. So while run charts are not as always as powerful as control charts, they can still provide practical monitoring and useful insights into the process. 
 
-Run charts typically employ the median for the reference line. Run charts help you determine whether there are unusual runs in the data, which suggest non-random variation.    
+Run charts typically employ the median for the reference line. Run charts help you determine whether there are unusual runs in the data, which suggest non-random variation. They tend to be better than control charts in trying to detect moderate (~1.5&sigma;) changes in process than using the control charts' typical 3&sigma; limits rule alone. In other words, a run chart is really useful when trying to detect improvement while that improvement work is still going on (where a control chart may be inapproopriate).        
 
-There are basically two "tests" for run charts (an astronomical data point isn't a test *per se*): 
+There are basically two "tests" for run charts (an astronomical data point or looking for cycles aren't tests *per se*): 
 
 - *Process shift:* $log_2(n) + 3$ data points (rounded to the nearest integer) are all above or all below the median line, where *n* is the number of points that do *not* fall directly on the median line. For example, if you have 60 points, and 7 fall on the median, you have 53 observations for *n*. Thus in this case, the longest run should be 9 points.  
-- *Number of crossings:* A run is a set of data points on one side of the median line. Too many or too few median line crossings suggest a pattern inconsistent with natural variation. You can use the binomial distribution (`qbinom(0.05, n-1, 0.50)` in R for a 5% false positive rate and because we expect 50% of values to lie on each side of the median) or a table (e.g., [Table 1 in Anhoj & Olesen 2014](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0113825#pone-0113825-t001)) to find the minimum number of crossings you would expect. Using the same values as above, we would expect the time series to cross the median at least 20 times.     
-
-Although many people use a "trend" test in association with run and control charts, research has shown this test to be ineffective (see [Useful References](#useful)). 
-
+- *Number of crossings:* A run is a set of data points on one side of the median line. Too many or too few median line crossings suggest a pattern inconsistent with natural variation. You can use the binomial distribution (`qbinom(0.05, n-1, 0.50)` in R for a 5% false positive rate and because we expect 50% of values to lie on each side of the median) or a table (e.g., [Table 1 in Anhoj & Olesen 2014](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0113825#pone-0113825-t001)) to find the minimum number of crossings you would expect. Using the same values as above, we would expect the time series to cross the median at least 20 times.  
 
 <p align="right"><small>[*back to top*](#top)</small></p>  
 
@@ -237,7 +232,7 @@ set.seed(250)
 df = data.frame(x = seq(1:120), y = 18+rnorm(120))
 
 nat_var_run_plot = ggplot(df, aes(x, y)) + 
-  xlim(15, 21) +
+  xlim(14, 22) +
   geom_hline(aes(yintercept=18), color="gray", size=1) +
   xlab("Subgroup") + 
   ylab("Value") +
@@ -252,7 +247,7 @@ The next plot shows control limits and 1-2&sigma; bands for comparison. Note tha
 
 ```{r ggmarg_cc, fig.width=10, fig.height=4.5}
 nat_var_cc_plot = ggplot(df, aes(x, y)) + 
-  xlim(15, 21) +
+  xlim(14, 22) +
   geom_hline(aes(yintercept=18), color="gray", size=1) +
   geom_hline(aes(yintercept=20.96), color="red") +
   geom_hline(aes(yintercept=15.1), color="red") +
@@ -642,6 +637,65 @@ Use common sense and avoid urge to change for every intervention unless evidence
 ## Appendix 2: R code for SPC plots {#appendix2}
 
 ```{r spccode, echo=TRUE, eval=FALSE}
+require(ggplot2)
+
+spc.plot <- function(subgroup, point, mean, sigma, k = 3,
+                     ucl.show = TRUE, lcl.show = TRUE, band.show = TRUE,
+                     ucl.max = Inf, lcl.min = -Inf,
+                     label.x = "Subgroup", label.y = "Value")
+{
+    # Plots control chart with ggplot
+    # 
+    # Args:
+    #   subgroup: Subgroup definition (for x-axis)
+    #   point: Subgroup sample values (for y-axis)
+    #   mean: Process mean value (for center line)
+    #   sigma: Process variation value (for control limits)
+    #   k: Specification for k-sigma limits above and below center line.
+    #      Default is 3.
+    #   ucl.show: Visible upper control limit? Default is true.
+    #   lcl.show: Visible lower control limit? Default is true.
+    #   band.show: Visible bands between 1-2 sigma limits?  Default is true.
+    #   ucl.max: Maximum feasible value for upper control limit.
+    #   lcl.min: Minimum feasible value for lower control limit.
+    #   label.x: Specify x-axis label.
+    #   label.y: Specify y-axis label.
+
+
+    df <- data.frame(subgroup, point)
+    df$ucl <- pmin(ucl.max, mean + k*sigma)
+    df$lcl <- pmax(lcl.min, mean - k*sigma)
+    df$outofcontrol <- point > df$ucl | point < df$lcl
+    
+    p <- ggplot(data = df, aes(x = subgroup)) +
+        geom_hline(yintercept = mean, col = "gray", size = 1)
+    
+    if (ucl.show) {
+        p <- p + geom_line(aes(y = ucl), col = "red")
+    }
+    
+    if (lcl.show) {
+        p <- p + geom_line(aes(y = lcl), col = "red")
+    }
+    
+    if (band.show) {
+        p <- p + 
+            geom_ribbon(aes(ymin = mean + sigma, 
+                            ymax = mean + 2*sigma), alpha = 0.2) +
+            geom_ribbon(aes(ymin = pmax(lcl.min, mean - 2*sigma),  
+                            ymax = mean - sigma), alpha = 0.2)
+    }
+    
+    p + 
+        geom_line(aes(y = point), col = "blue") +
+        geom_point(aes(y = point, col = outofcontrol)) +
+        scale_color_manual(values = c("blue", "red"), guide = FALSE) +
+        labs(x = label.x, y =label.y) +
+        theme_bw()
+}
+
 ```
 
 <p align="right"><small>[*back to top*](#top)</small></p>  
+
+##### End of File #####
