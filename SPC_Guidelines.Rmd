@@ -232,7 +232,7 @@ set.seed(250)
 df = data.frame(x = seq(1:120), y = 18+rnorm(120))
 
 nat_var_run_plot = ggplot(df, aes(x, y)) + 
-  xlim(14, 22) +
+  ylim(14.75, 21.25) +
   geom_hline(aes(yintercept=18), color="gray", size=1) +
   xlab("Subgroup") + 
   ylab("Value") +
@@ -247,7 +247,7 @@ The next plot shows control limits and 1-2&sigma; bands for comparison. Note tha
 
 ```{r ggmarg_cc, fig.width=10, fig.height=4.5}
 nat_var_cc_plot = ggplot(df, aes(x, y)) + 
-  xlim(14, 22) +
+  ylim(14.75, 21.25) +
   geom_hline(aes(yintercept=18), color="gray", size=1) +
   geom_hline(aes(yintercept=20.96), color="red") +
   geom_hline(aes(yintercept=15.1), color="red") +
@@ -636,7 +636,7 @@ Use common sense and avoid urge to change for every intervention unless evidence
 
 ## Appendix 2: R code for SPC plots {#appendix2}
 
-```{r spccode, echo=TRUE, eval=FALSE}
+```{r spccode_display, echo=TRUE, eval=FALSE}
 require(ggplot2)
 
 spc.plot <- function(subgroup, point, mean, sigma, k = 3,
