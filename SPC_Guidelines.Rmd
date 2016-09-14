@@ -15,22 +15,21 @@ output: html_document
 
 <hr/>  
 
-[Overview](#overview)  
+[1. Overview](#overview)  
 &nbsp;&nbsp;[Which should I use: a run chart or a control chart?](#which)  
 &nbsp;&nbsp;[Run charts](#runcharts)  
 &nbsp;&nbsp;[Control charts](#controlcharts)  
 &nbsp;&nbsp;&nbsp;&nbsp;[Which control chart should I use?](#whichcontrolchart)  
 &nbsp;&nbsp;&nbsp;&nbsp;[Tips and tricks for successful control chart use](#tipsandtricks)  
-[Control Chart Creation Details](#part2)  
+[2. Control Chart Creation Details](#part2)  
 &nbsp;&nbsp;[Count, proportion, or rate data](#attribute)  
 &nbsp;&nbsp;[Continuous data](#numeric)  
-[Useful References](#useful)    
-[Advanced Guidance](#part3)  
-&nbsp;&nbsp;[Testing assumptions](#testassumptions)  
-&nbsp;&nbsp;[When assumptions fail](#assumptionsfail)  
+[3. Testing assumptions](#testassumptions)  
+&nbsp;&nbsp;[Trending](#trending)   
+&nbsp;&nbsp;[Independence](#independence)   
 &nbsp;&nbsp;[When to revise control limits](#reviselimits)  
-[Appendix 1: Expected run counts for run charts](#appendix)    
-[Appendix 2: R code for SPC plots](#appendix2)    
+[4. Useful References](#useful)    
+[Appendix 1: An R function for SPC plots](#appendix1)    
 
 <hr/>
 
@@ -39,12 +38,12 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 require(ggExtra)
+require(ggplot2)
+require(qicharts)
 
 ```
 
 ``` {r spccode, echo = FALSE, fig.height = 3.5}
-
-require(ggplot2)
 
 spc.plot <- function(subgroup, point, mean, sigma, k = 3,
                      ucl.show = TRUE, lcl.show = TRUE, band.show = TRUE,
@@ -212,8 +211,12 @@ Run charts typically employ the median for the reference line. Run charts help y
 
 There are basically two "tests" for run charts (an astronomical data point or looking for cycles aren't tests *per se*): 
 
-- *Process shift:* $log_2(n) + 3$ data points (rounded to the nearest integer) are all above or all below the median line, where *n* is the number of points that do *not* fall directly on the median line. For example, if you have 60 points, and 7 fall on the median, you have 53 observations for *n*. Thus in this case, the longest run should be 9 points.  
-- *Number of crossings:* A run is a set of data points on one side of the median line. Too many or too few median line crossings suggest a pattern inconsistent with natural variation. You can use the binomial distribution (`qbinom(0.05, n-1, 0.50)` in R for a 5% false positive rate and because we expect 50% of values to lie on each side of the median) or a table (e.g., [Table 1 in Anhoj & Olesen 2014](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0113825#pone-0113825-t001)) to find the minimum number of crossings you would expect. Using the same values as above, we would expect the time series to cross the median at least 20 times.  
+- *Process shift:* $log_2(n) + 3$ data points (rounded to the nearest integer) are all above or all below the median line, where *n* is the number of points that do *not* fall directly on the median line. For example, if you have 34 points, and 2 fall on the median, you have 32 observations for *n*. Thus in this case, the longest run should be 8 points.  
+- *Number of crossings:* A run is a set of data points on one side of the median line. Too many or too few runs---or more simply, median line crossings---suggest a pattern inconsistent with natural variation. You can use the binomial distribution (`qbinom(0.05, n-1, 0.50)` in R for a 5% false positive rate and because we expect 50% of values to lie on each side of the median) or a table (e.g., [Table 1 in Anhoj & Olesen 2014](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0113825#pone-0113825-t001)) to find the minimum number of crossings you would expect. Using the same values as above, we would expect the time series to cross the median at least 11 times.  
+
+```{r qichart, fig.width=8, fig.height=3.5}
+qic(point.signal, runvals=TRUE, ylab="Value", main="")
+```
 
 <p align="right"><small>[*back to top*](#top)</small></p>  
 
@@ -227,7 +230,7 @@ Understanding natural variation in time series data is the essential point of qu
 
 This graph shows a process created using random numbers based on a known normal distribution, where the overall distribution is shown in a histogram to the right of the run chart.  
 
-```{r ggmarg, fig.width=10, fig.height=4.5}
+```{r ggmarg, fig.width=10, fig.height=4}
 set.seed(250)
 df = data.frame(x = seq(1:120), y = 18+rnorm(120))
 
@@ -245,7 +248,7 @@ ggMarginal(nat_var_run_plot, margins="y", type = "histogram", binwidth=0.5)
 
 The next plot shows control limits and 1-2&sigma; bands for comparison. Note that some of the control chart rules for detecting special causes suggest that some special cause variation has occurred in this data. Since this data was generated using random numbers from a known normal distribution, these are false positives. It's important to remember that control charts are meant to balance true and false negatives, but can never entirely eliminate either.    
 
-```{r ggmarg_cc, fig.width=10, fig.height=4.5}
+```{r ggmarg_cc, fig.width=10, fig.height=4}
 nat_var_cc_plot = ggplot(df, aes(x, y)) + 
   ylim(14.75, 21.25) +
   geom_hline(aes(yintercept=18), color="gray", size=1) +
@@ -265,11 +268,9 @@ ggMarginal(nat_var_cc_plot, margins="y", type = "histogram", binwidth=0.5)
 
 ### Which control chart should I use? {#whichcontrolchart}
 
-The following flow chart can help you determine which kind of control chart you might want to use.  
+The following flow chart can help you determine which kind of control chart you might want to use. More details and formulas for each control chart type are provided in the [Control Chart Creation Details](#part2) section.   
 
 ![](https://github.com/Rmadillo/SCH_R_Training/blob/master/images/control_chart_flowchart.png?raw=true)
-
-More details and formulas for each control chart type are provided in the [Control Chart Creation Details](#part2) section.   
 
 <p align="right"><small>[*back to top*](#top)</small></p>  
 
@@ -302,6 +303,11 @@ More details and formulas for each control chart type are provided in the [Contr
 - With very large sample or subgroup sizes, control limits will be too small, and the false positive rate will skyrocket. Use prime charts instead.     
 
 <p align="right"><small>[*back to top*](#top)</small></p>  
+
+<br/>  
+<br/>  
+
+<hr/>
 
 ## Control Chart Creation Details {#part2}
 
@@ -412,7 +418,7 @@ spc.plot(subgroup.g, point.g, mean.g, sigma.g, lcl.show = FALSE, lcl.min  = 0, k
 &nbsp;&nbsp;&nbsp;&nbsp; $y = t^{0.2777}$  
 &nbsp;&nbsp;&nbsp;&nbsp; $MR_{bar}$ = average moving range of *y*s, excluding those > 3.27$MR_{bar}$   
     
-Note: t chart mean and limits can be transformed back to the original scale by raising those values to the 3.6 power. In addition, the y axis can be plotted on a log scale to make the display more symmetrical (which can be easier than explaining the how the distribution works to a decision maker).   
+Note: t chart mean and limits can be transformed back to the original scale by raising those values to the 3.6 power. In addition, the y axis can be plotted on a log scale to make the display more symmetrical (which can be easier than explaining how the distribution works to a decision maker).   
 
 <p align="right"><small>[*back to top*](#top)</small></p>  
 
@@ -425,7 +431,7 @@ Note: t chart mean and limits can be transformed back to the original scale by r
 | Exponentially weighted moving average (small process shifts) | EWMA chart | normal |
 | Cumulative sum (small process shifts) | CUSUM chart | normal |
 
-**NEED TO ADD STUFF HERE ON WHICH TO USE, EWMA to weight recent data and CUSUM for equal weights**  
+EWMA and CUSUM charts aren't "standard" control charts in that the only guideline for detecting special cause variation is a point outside the limits. So while they can't detect special cause variation like control charts, they *can* detect shifts in mean faster than a standard control chart.  
 
 #### $\bar{x}$ and *s* chart example
 
@@ -512,7 +518,9 @@ Lower and upper cumulative sums are calculated as follows:
 
 $S_{l,i} = -\max{[0, -z_i -k + S_{l,i-1}]},$  
 $S_{h,i} = \max{[0, z_i -k + S_{h,i-1}]}$  
-&nbsp;&nbsp;&nbsp;&nbsp; *where* $z_i$ is the standardized normal score for subgroup $i$ and $0.5 \leq k \leq 1$ is a slack value.  It is common to choose "decision limits" $\pm 4$ or $\pm 5$.
+&nbsp;&nbsp;&nbsp;&nbsp; *where* $z_i$ is the standardized normal score for subgroup $i$ and $0.5 \leq k \leq 1$ is a slack value.   
+
+It is common to choose "decision limits" of $\pm 4$ or $\pm 5$.  
 
 <br/>  
 
@@ -554,6 +562,43 @@ lower.plot + geom_line(aes(y = point.cusumh), col = "blue") +
 
 <br/>  
 
+## Testing assumptions {#testassumptions}
+
+### Trending {#trending}
+
+You can test whether a process is trending first by eye: does it look like it's trending over a large span of the time series? Then it probably is. More technically, you can run a simple linear regression---if the coefficient of the slope is significant, your data is trending.  
+
+Because trends can sometimes be an indication of special cause variation in a stable process, control limits don't make sense around long-trending data, and calculation of center lines and control limits will be incorrect. Thus, tests for special causes other than trending will also be invalid. 
+
+Use a run chart with an appropriate median instead (e.g., via quantile regression), or evaluate it as you would any regression, via residual diagnostics.  
+
+Non-linear change is a special case of trending data, and isn't necessarily autocorrelated, though it can be in cases like seasonailty. When it *isn't* autocorrelated, advanced techniques like Generalized Additive Models (GAM) can be used in place of a control chart to provide limits that can assist decision-making. If you were using a control chart when the data began to show trending, restart control limits after the trend has stabilized or switch to using a GAM.    
+
+
+### Independence {#independence}
+
+For either run or control charts, the data points must be independent for the guidelines to be effective. The first test of that is conceptual---do you expect that one value in this series will influence a subsequent value? For example, the incidence of some hospital-acquired infections can be the result of previous infections---say, one happens at the end of March, and another happens at the start of April, and were caused by the same organisim, you might suspect that the monthly values would not be independent. 
+
+A second test is by calculating the autocorrelation function for the time series. Autocorrelation values over 0.50 generally indicate problems. However, any significant autocorrelation should be considered carefully relative to the cost of potential false positive or false negative signals.   
+
+When data are autocorrelated, control limits from the above chart types will be *too small*---and thus an increase in *false* signals of special causes should be expected. In addition, none of the tests for special causes remain valid.    
+
+Sometimes, autocorrelation can be removed by changing the sampling or metric's time step: for example, you generally wouldn't expect hospital acquired infection rates in one quarter to influence those in the subsequent quarter.   
+
+If you can't change the sampling rate or time step, you shouldn't use either run or control charts, and instead use a standard line chart. If you must have limits to help guide decision-making, you'll need a more advanced technique, such as a Generalized Addative Mixed Model (GAMM) or time series models such as ARIMA.  
+
+<p align="right"><small>[*back to top*](#top)</small></p>  
+
+### When to revise control limits {#reviselimits}
+
+If you need to determine whether an intervention might have worked soon after or even during the improvement process, you shouldn't be using a standard control chart at all. Use a run chart or an EWMA or CUSUM chart to try to detect early shifts.
+
+When you have enough data points after the intervention (12-20), with no other changes to the process, you can "freeze" the median, and/or mean+control limits at the intervention point and recalculate the median and/or mean+limits on the subsequent data. However, by doing so you are *already assuming* that the intervention changed the process. Sometimes that evidence will be there, such as through a variety of signals of special cause variation; other times, that evidence will not be there. If there is no evidence of special cause variation for awhile after the intervention, you shouldn't freeze and restart the SPC chart values. 
+
+SPC charts are blunt instruments, and are meant to detect obvious *step* changes in a process as simply as possible. Where there is no evidence in SPC charts for a change, more advanced techniques---such as ARIMA models or intervention/changepoint analysis---can be used to assess whether there was a change in the statistical process at or near the intervention point.  
+
+Use common sense and avoid the urge to change medians or means+limits for every intervention unless evidence is clear that it worked.   
+
 <p align="right"><small>[*back to top*](#top)</small></p>  
 
 ## Useful References {#useful}
@@ -568,73 +613,18 @@ lower.plot + geom_line(aes(y = point.cusumh), col = "blue") +
 
 - The papers that discuss the uselessness of the trend test in run and control charts include Davis & Woodall 1988, [Performance of the control chart trend rule under linear shift](http://asq.org/qic/display-item/index.pl?item=5597), *Journal of Quality Technology* 20:260-262, and Anhoj & Olesen 2014, [Run charts revisited: A simulation study of run chart rules for detection of non-random variation in health care processes](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0113825), *PLOS One*, 9(11): e113825.
 
-- Finally, some important warnings about when control charts fail (and a useful alternative) can be found in Morton et al. 2009, [Hospital adverse events and control charts: the need for a new paradigm](http://www.journalofhospitalinfection.com/article/S0195-6701(09)00340-5/abstract), *Journal of Hospital Infection* 73(3):225–231, as well as in Morton et al. 2007, [New control chart methods for monitoring MROs in Hospitals](https://www.researchgate.net/profile/Edward_Tong2/publication/43477704_New_control_chart_methods_for_monitoring_MROs_in_hospitals/links/5600d22e08aec948c4fa93cd.pdf), *Australian Infection Control* 12(1):14-18.    
+- Finally, some important warnings about when control charts fail (and a useful alternative, GAMs) can be found in Morton et al. 2009, [Hospital adverse events and control charts: the need for a new paradigm](http://www.journalofhospitalinfection.com/article/S0195-6701(09)00340-5/abstract), *Journal of Hospital Infection* 73(3):225–231, as well as in Morton et al. 2007, [New control chart methods for monitoring MROs in Hospitals](https://www.researchgate.net/profile/Edward_Tong2/publication/43477704_New_control_chart_methods_for_monitoring_MROs_in_hospitals/links/5600d22e08aec948c4fa93cd.pdf), *Australian Infection Control* 12(1):14-18.    
 
 <p align="right"><small>[*back to top*](#top)</small></p>  
 
-## Advanced Guidance {#part3}
+<br/>  
+<br/>  
 
-### Testing assumptions {#testassumptions}
+<hr/>
 
-**NEED TO ADD STUFF HERE**  
+## Appendix 1: An R function for SPC plots {#appendix1}
 
-```{r assumpt, fig.height=3.5}
-# Autocorrelation
-acf(df$y)
-
-# Linear trend (not flat)
-summary(lm(y ~ x, data = df))
-
-# Monthplot
-df_ts = ts(df$y, freq=12, start=c(2010,10))
-monthplot(df_ts)
-
-# Seasonplot
-require(forecast)
-seasonplot(df_ts, year.labels.left = TRUE)
-
-# Periodogram
-TSA::periodogram(df_ts) 
-spectrum(df_ts) # not as easy to interp what freq axis is?
-```
-
-<p align="right"><small>[*back to top*](#top)</small></p>  
-
-### When assumptions fail {#assumptionsfail}
-
-Because trends can sometimes be an indication of special cause variation in a stable process, control limits don't make sense around trending data, and calculation of center lines and control limits will be incorrect. Thus, tests for special causes other than trending will also be invalid. Restart control limits after the trend has stabilized.    
-
-When data are autocorrelated, control limits from the above chart types will be *too small*---and thus an increase in *false* signals of special causes should be expected. In addition, none of the tests for special causes remain valid.    
-
-(what about Differencing? Seasonal adjustment? do we need a part 2, with part 1 focused on basics/essentials?)
-
-
-Use a run chart, and do not rely on the runs or process shift rules.  
-
-
-Still need limits? Use a GAM (trending/seasonal data, not autocorrelated) or GAMM (autocorrelated data) or time series models (ARIMA, explore residuals).  
-
-<p align="right"><small>[*back to top*](#top)</small></p>  
-
-### When to revise control limits {#reviselimits}
-
-When you have at least 20 data points since an intervention, and there is evidence that the intervention changed the process. 
-
-Intervention/changepoint analysis  
-
-Variance changes  
-
-Use common sense and avoid urge to change for every intervention unless evidence is clear  
-
-<p align="right"><small>[*back to top*](#top)</small></p>  
-
-## Appendix 1: Expected run counts for run charts {#appendix}
-
-![](http://www.qualitydigest.com/files/u1/1008%20QD%20Web/BalestracciFig2.gif)
-
-<p align="right"><small>[*back to top*](#top)</small></p>  
-
-## Appendix 2: R code for SPC plots {#appendix2}
+The R packages `qcc` and `qicharts` can create ready-to-go control charts from a single line of code. However, neither provides a combination of simplicity and visual cues of special cause variation, so we've written our own function. This function created the graphs in the [examples section](#part2), above.  
 
 ```{r spccode_display, echo=TRUE, eval=FALSE}
 require(ggplot2)
