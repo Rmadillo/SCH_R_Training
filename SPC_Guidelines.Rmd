@@ -16,6 +16,7 @@ output: html_document
 <hr/>  
 
 [**1. Overview**](#overview)  
+&nbsp;&nbsp;[Guidelines for interpreting SPC charts](#guidelines)  
 &nbsp;&nbsp;[Which should I use: a run chart or a control chart?](#which)  
 &nbsp;&nbsp;[Run charts](#runcharts)  
 &nbsp;&nbsp;[Control charts](#controlcharts)  
@@ -157,13 +158,18 @@ ggsave("example_run_chart.png")
 
 People are really good at finding patterns that aren't real.  
 
-Every process has natural variation---*noise*---included as an inherent part of that process. True signals emerge only when you have properly characterized that variation.   
+Every process has natural variation---*noise*---included as an inherent part of that process. True signals emerge only when you have properly characterized that variation. Statistical process control (SPC) charts---run charts and control charts---help you characterize and identify non-random patterns that suggest your process has changed.   
 
 Control charts are meant to help you identify departures from a **stable** process. Run charts help you monitor any sort of metric, process, or time series data. Each uses a set of guidelines to help you make decisions on whether a process has changed or not.    
 
 In many cases, a run chart may be all you need. In *all* cases, you should start with a run chart. If---and only if---you need to characterize the limits of natural variation in a stable process, you can move on to using a control chart.      
 
 In addition, *never* rely on a table or year-to-date comparisons to evaluate process performance. Tables or two-data-point comparisons can supplement run or control charts, but should never be used without them.   
+
+Above all, remember that the decisions you make in constructing SPC charts *will* impact the interpretation of the results. Bad charts can make for bad decisions.    
+
+
+### Guidelines for interpreting SPC charts {#guidelines}
 
 
 | Run chart | Control Chart |
