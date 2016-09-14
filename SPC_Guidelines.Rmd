@@ -15,20 +15,20 @@ output: html_document
 
 <hr/>  
 
-[1. Overview](#overview)  
+[**1. Overview**](#overview)  
 &nbsp;&nbsp;[Which should I use: a run chart or a control chart?](#which)  
 &nbsp;&nbsp;[Run charts](#runcharts)  
 &nbsp;&nbsp;[Control charts](#controlcharts)  
 &nbsp;&nbsp;&nbsp;&nbsp;[Which control chart should I use?](#whichcontrolchart)  
 &nbsp;&nbsp;&nbsp;&nbsp;[Tips and tricks for successful control chart use](#tipsandtricks)  
-[2. Control Chart Creation Details](#part2)  
+[**2. Control Chart Creation Details**](#part2)  
 &nbsp;&nbsp;[Count, proportion, or rate data](#attribute)  
 &nbsp;&nbsp;[Continuous data](#numeric)  
-[3. Testing assumptions](#testassumptions)  
+[**3. Testing assumptions**](#testassumptions)  
 &nbsp;&nbsp;[Trending](#trending)   
 &nbsp;&nbsp;[Independence](#independence)   
 &nbsp;&nbsp;[When to revise control limits](#reviselimits)  
-[4. Useful References](#useful)    
+[**4. Useful References**](#useful)    
 [Appendix 1: An R function for SPC plots](#appendix1)    
 
 <hr/>
@@ -605,7 +605,11 @@ Use common sense and avoid the urge to change medians or means+limits for every 
 
 - For more information, a good overview of run charts can be found in Perla et al. 2011, [The run chart: a simple analytical tool for learning from variation in healthcare processes](http://www.med.unc.edu/cce/files/education-training/The%20run%20chart%20a%20simple%20analytical%20tool.pdf), *BMJ Quality & Safety* 20:46-51.  
 
+- A straight-to-the-point reference/tool for doing run charts in R is Anhoej's [Run charts with R](https://cran.r-project.org/web/packages/qicharts/vignettes/runcharts.html).
+
 - Some good overview papers on control charts include Benneyan et al. 2003, [Statistical process control as a tool for research and healthcare improvement](http://qualitysafety.bmj.com/content/12/6/458.full.pdf), *BMJ Quality & Safety* 12:458-464, and Mohammed et al. 2008, [Plotting basic control charts: tutorial notes for healthcare practitioners](https://www.researchgate.net/profile/William_Woodall/publication/5468089_Plotting_control_charts_Tutorial_notes_for_healthcare_practitioners/links/00b49521d1165f1f49000000.pdf), *BMJ Quality & Safety* 17:137-145.  
+
+- A straight-to-the-point reference/tool for doing run charts in R is Anhoej's [Control Charts with qicharts for R](https://cran.r-project.org/web/packages/qicharts/vignettes/controlcharts.html).
 
 - A good basic overview book is Carey and Lloyd 2001, [Measuring Quality Improvement in Healthcare](https://www.amazon.com/Measuring-Quality-Improvement-Healthcare-Applications/dp/0527762938/), American Society for Quality.  
 
