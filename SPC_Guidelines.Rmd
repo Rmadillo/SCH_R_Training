@@ -180,8 +180,7 @@ Above all, remember that the decisions you make in constructing SPC charts *will
 | *"Astronomical" data point:* a point so different from the rest that anyone would agree that the value is unusual. | *One or more points fall outside the control limit:* if the data are distributed according to the given control chart's assumptions, the probability of seeing a point outside the control limits when the process has not changed is very low. |
 | *Process shift:* $log_2(n) + 3$ data points are all above or all below the median line. | *Process shift:* $log_2(n) + 3$ data points are all above or all below the mean line. |
 | *Number of crossings:* Too many or too few median line crossings suggest a pattern inconsistent with natural variation. | *Number of crossings:* Too many or too few center line crossings suggest a pattern inconsistent with natural variation. | 
-| *Trend:* Seven or more consecutive points all increasing or all decreasing (though this is usually ineffective\*).  | 
-| *Trend:* Seven or more consecutive points all increasing or all decreasing (though this is usually ineffective\*).  | 
+| *Trend:* Seven or more consecutive points all increasing or all decreasing (though this is usually ineffective\*). | *Trend:* Seven or more consecutive points all increasing or all decreasing (though this is usually ineffective\*).  | 
 | *Cycles:* There are obvious cycles that are not linked to known causes such as seasonality. | *Cycles:* There are obvious cycles of any sort. | 
 | | *Reduced variation:* Eight or more consecutive points all within 1$\sigma$. | 
 | | *1$\sigma$ signal:* Four of five consecutive points are more than one standard deviation away from the mean. | 
