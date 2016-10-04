@@ -12,24 +12,26 @@ output: html_document
 [Brendan Bettinger, PhD](mailto:EMAIL@COMPANY.org&subject=SPC%20Guidelines)  
 *Infection Prevention*  
 
-Version 0.9 | 19 September 2016
+Version 0.9.1  
+3 October 2016  
 
 <hr/>  
 
 [**1. Overview**](#overview)  
-&nbsp;&nbsp;[Guidelines for interpreting SPC charts](#guidelines)  
-&nbsp;&nbsp;[Which should I use: a run chart or a control chart?](#which)  
-&nbsp;&nbsp;[Run charts](#runcharts)  
-&nbsp;&nbsp;[Control charts](#controlcharts)  
-&nbsp;&nbsp;&nbsp;&nbsp;[Which control chart should I use?](#whichcontrolchart)  
-&nbsp;&nbsp;&nbsp;&nbsp;[Tips and tricks for successful control chart use](#tipsandtricks)  
+&nbsp;&nbsp;&nbsp;&nbsp;[Guidelines for interpreting SPC charts](#guidelines)  
+&nbsp;&nbsp;&nbsp;&nbsp;[Which should I use: a run chart or a control chart?](#which)  
+&nbsp;&nbsp;&nbsp;&nbsp;[Run charts](#runcharts)  
+&nbsp;&nbsp;&nbsp;&nbsp;[Control charts](#controlcharts)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Which control chart should I use?](#whichcontrolchart)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Tips and tricks for successful control chart use](#tipsandtricks)  
 [**2. Control Chart Creation Details**](#part2)  
-&nbsp;&nbsp;[Count, proportion, or rate data](#attribute)  
-&nbsp;&nbsp;[Continuous data](#numeric)  
+&nbsp;&nbsp;&nbsp;&nbsp;[Count, proportion, or rate data](#attribute)  
+&nbsp;&nbsp;&nbsp;&nbsp;[Continuous data](#numeric)  
 [**3. Testing assumptions**](#testassumptions)  
-&nbsp;&nbsp;[Trending](#trending)   
-&nbsp;&nbsp;[Independence](#independence)   
-&nbsp;&nbsp;[When to revise control limits](#reviselimits)  
+&nbsp;&nbsp;&nbsp;&nbsp;[Trending](#trending)   
+&nbsp;&nbsp;&nbsp;&nbsp;[Independence](#independence)   
+&nbsp;&nbsp;&nbsp;&nbsp;[What happens when you get the mean-variance relationship wrong](#meanvar)  
+&nbsp;&nbsp;&nbsp;&nbsp;[When to revise control limits](#reviselimits)  
 [**4. Useful References**](#useful)    
 [Appendix 1: An R function for SPC plots](#appendix1)    
 
@@ -203,7 +205,7 @@ Above all, remember that the decisions you make in constructing SPC charts *will
 | You have little control over or cannot control the metric (e.g., ED volume/acuity). | You have the potential to control the process driving the metric (e.g., ED wait times). | 
 | You want to monitor the behavior of individual or groups of data points to a reference, target, or goal level. | You want to monitor the "average" of the system's behavior (i.e., the underlying statistical process)---deviations from expectations. | 
 | You are monitoring a metric or process that is generally trending or contains seasonality or other cycles of known cause, as long as you are able to calculate an appropriate median line (e.g., via quantile regression or seasonal adjustment). | You are monitoring a *stable* statistical process (there is no trend in the time series, or you have made the appropriate corrections to account for trends or seasonality). |
-| You have no expectations that normal day-to-day operations will affect the central tendancy. | You expect that normal day-to-day operations will or are meant to keep the process stable within the bounds of common-cause variation. |
+| You have no expectations that normal day-to-day operations will affect the central tendency. | You expect that normal day-to-day operations will or are meant to keep the process stable within the bounds of common-cause variation. |
 | You do not need to account for the inherent natural variation in the system. | You need to understand and account for the inherent natural variation ("noise") in the system. | 
 | You have at least 12 data points. (Fewer than 12? Just make line chart, or use an EWMA chart. Run chart guidelines may not be valid.) | You have 20 or more data points that are in a stable statistical process, or you have performed a power analysis that provides the appropriate n for the appropriate time interval. | 
 | You do not understand one or more of the statistical issues discussed in the control chart column. | You understand the practical trade-offs between the sensitivity and specificity of the control limits relative to your need to investigate or act. |
@@ -238,7 +240,7 @@ Understanding natural variation in time series or sequential data is the essenti
 
 This graph shows a process created using random numbers based on a known normal distribution, where the overall distribution is shown in a histogram to the right of the run chart.  
 
-```{r ggmarg, fig.width=10, fig.height=4}
+```{r ggmarg, fig.height=4}
 set.seed(250)
 df = data.frame(x = seq(1:120), y = 18+rnorm(120))
 
@@ -256,7 +258,7 @@ ggMarginal(nat_var_run_plot, margins="y", type = "histogram", binwidth=0.5)
 
 The next plot shows control limits and 1-2&sigma; bands for comparison. Note that some of the control chart guidelines for detecting special causes suggest that some special cause variation has occurred in this data. Since this data was generated using random numbers from a known normal distribution, these are false positives. It's important to remember that control charts are meant to balance true and false negatives, but can never entirely eliminate either.    
 
-```{r ggmarg_cc, fig.width=10, fig.height=4}
+```{r ggmarg_cc, fig.height=4}
 nat_var_cc_plot = ggplot(df, aes(x, y)) + 
   ylim(14.75, 21.25) +
   geom_hline(aes(yintercept=18), color="gray", size=1) +
@@ -290,7 +292,9 @@ The following flow chart can help you determine which kind of control chart you 
 
 - Ensure your data values and control limits make sense. For example, if you have proportion data and your control limits fall above 100 or below 0, there's clearly an error somewhere. Ditto with negative counts.  
 
-- For continuous data, the definition of the control limits will depend on your question and the data at hand. To detect small shifts in the mean quickly, an EWMA is probably best, while to understand natural variation and try to detect special cause variation, an $\bar{x}$ and *s* chart will be more useful.    
+- For continuous data, the definition of the control limits will depend on your question and the data at hand. To detect small shifts in the mean quickly, an EWMA is probably best, while to understand natural variation and try to detect special cause variation, an $\bar{x}$ and *s* chart will be more useful.
+
+- In the rare cases you may need an individual chart, do *not* use 3*sd* for the control limits; you must use 2.66$MR_{bar}$ instead to ensure the limits are presented correctly.  
 
 - For count, rate, or proportion data, carefully define your numerator and denominator. Evaluate each separately over time to see whether there are any unusual features or patterns. Sometimes patterns can occur in one or the other, then disappear or are obscured when coalesced into a rate or proportion.  
 
@@ -332,13 +336,15 @@ The majority of healthcare metrics of concern are rates, so the most common cont
 | Rare events / infrequent counts (with equal opportunity/constant denominator) | *g* chart | geometric | 
 | Time between events | *t* chart | Weibull |
 
-In each case, the center line will be the arithmetic mean of the data window of interest. Rather than using $\bar{x}$ abbreviation, these mean values are usually named for each type of chart (*u*, *p*, etc.) to help emphasize the use of control limits that are *not* based on the normal distribution.    
-
 #### *u* chart example
 
-**3&sigma; control limits for rates (*u*):** $3\sqrt{\frac{u}{n_i}}$   
+**Mean for rates (*u*):** &nbsp;&nbsp; $u = {\frac{c}{n}}$
 
-**3&sigma; control limits for counts (*c*)(not shown):** $3\sqrt{c}$   
+**3&sigma; control limits for rates (*u*):** &nbsp;&nbsp; $3\sqrt{\frac{u}{n_i}}$   
+
+**Mean for counts (*c*)(not shown):** &nbsp;&nbsp; $c$
+
+**3&sigma; control limits for counts (*c*)(not shown):** &nbsp;&nbsp; $3\sqrt{c}$   
 
 <br/>  
 
@@ -367,7 +373,9 @@ spc.plot(subgroup.u, point.u, mean.u, sigma.u, k = 3, lcl.min  = 0,
 
 #### *p* chart example
 
-**3&sigma; control limits for proportions (*p*):** $3\sqrt{\frac {p (1 - p)}{n_i}}$  
+**Mean for proportions (*p*):** &nbsp;&nbsp; $p = {\frac{y}{n}}$
+
+**3&sigma; control limits for proportions (*p*):** &nbsp;&nbsp; $3\sqrt{\frac {p (1 - p)}{n_i}}$  
 
 <br/>  
 
@@ -396,7 +404,9 @@ spc.plot(subgroup.p, point.p, mean.p, sigma.p,
 
 #### *g* chart example
 
-**3&sigma; limits for infrequent counts (*g*):** $3\sqrt{g (g + 1)}$    
+**Mean for infrequent counts (*g*):** &nbsp;&nbsp; $g = {\frac{\Sigma{t}}{n}}$
+
+**3&sigma; limits for infrequent counts (*g*):** &nbsp;&nbsp; $3\sqrt{g (g + 1)}$    
 
 <br/>  
 
@@ -420,7 +430,7 @@ spc.plot(subgroup.g, point.g, mean.g, sigma.g, lcl.show = FALSE, lcl.min  = 0, k
 
 <br/>   
 
-**3&sigma; control limits for time between events (*t*)(not shown):** $2.66MR_{bar}$    
+**Control limits for time between events (*t*)(not shown):** &nbsp;&nbsp; 2.66$MR_{bar}$    
 &nbsp;&nbsp;&nbsp;&nbsp; *where*  
 &nbsp;&nbsp;&nbsp;&nbsp; $t$ = time between events, where *t* is always > 0    
 &nbsp;&nbsp;&nbsp;&nbsp; $y = t^{0.2777}$  
@@ -435,19 +445,39 @@ Note: *t* chart mean and limits can be transformed back to the original scale by
 
 | If your data involve... | use a ... | based on the ... distribution. | 
 | ----------------------------- | --------- | ----------------------------- | 
+| Individual points and an average (large process shifts) | *I* chart | normal | 
 | Variable average (large process shifts) | $\bar{x}$ and *s* chart | normal |
 | Exponentially weighted moving average (small process shifts) | EWMA chart | normal |
 | Cumulative sum (small process shifts) | CUSUM chart | normal |
 
-EWMA and CUSUM charts aren't "standard" control charts in that the only guideline for detecting special cause variation is a point outside the limits. So while they can't detect special cause variation like control charts, they *can* detect shifts in mean with fewer points than a standard control chart.  
+Note: EWMA and CUSUM charts aren't "standard" control charts in that the only guideline for detecting special cause variation is a point outside the limits. So while they can't detect special cause variation like control charts, they *can* detect shifts in mean with fewer points than a standard control chart.  
+
+<br/>  
+
+#### *I* chart example
+
+**Mean($\bar{x}$):** &nbsp;&nbsp; $\bar{x} = \frac{\sum_{x_{i}}}{n}$
+
+**Control limits for normal data (*I*):** 2.66$MR_{bar}$  
+&nbsp;&nbsp;&nbsp;&nbsp; *where*  
+&nbsp;&nbsp;&nbsp;&nbsp; $MR_{bar}$ = average moving range of *x*s, excluding those > 3.27$MR_{bar}$   
+
+```{r normy}
+# Something for I chart or not?
+#Use MR also?
+```
+
+**FIGURE HERE?**
+
+<br/>
 
 #### $\bar{x}$ and *s* chart example
 
 Control limits (3&sigma;) are calculated as follows:  
  		  
-**Variable averages ($\bar{x}$):** $3\frac{\bar{s}}{\sqrt{n_i}}$
+**Variable averages ($\bar{x}$):** &nbsp;&nbsp; $3\frac{\bar{s}}{\sqrt{n_i}}$
  		  
-**Variable standard deviation (*s*):** $3\bar{s}\sqrt{1-c_4^2}$  
+**Variable standard deviation (*s*):** &nbsp;&nbsp; $3\bar{s}\sqrt{1-c_4^2}$  
 &nbsp;&nbsp;&nbsp;&nbsp; *where* $c_4 = \sqrt{\frac{2}{n-1}}\frac{\Gamma(\frac{n}{2})}{\Gamma(\frac{n-1}{2})}$  
 
 <br/>  
@@ -569,6 +599,9 @@ lower.plot + geom_line(aes(y = point.cusumh), col = "blue") +
 ```
 
 <br/>  
+<br/>  
+
+<hr/>
 
 ## Testing assumptions {#testassumptions}
 
@@ -580,12 +613,13 @@ Because trends can sometimes be an indication of special cause variation in a st
 
 Use a run chart with an appropriate median instead (e.g., via quantile regression), or evaluate it as you would any regression, via residual diagnostics.  
 
-Non-linear change is a special case of trending data, and isn't necessarily autocorrelated, though it can be in cases like seasonailty. When it *isn't* autocorrelated, advanced techniques like Generalized Additive Models (GAM) can be used in place of a control chart to provide limits that can assist decision-making. If you were using a control chart when the data began to show trending, restart control limits after the trend has stabilized or switch to using a GAM.    
+Non-linear change is a special case of trending data, and isn't necessarily autocorrelated, though it can be in cases like seasonality. When it *isn't* autocorrelated, advanced techniques like Generalized Additive Models (GAM) can be used in place of a control chart to provide limits that can assist decision-making. If you were using a control chart when the data began to show trending, restart control limits after the trend has stabilized or switch to using a GAM.    
 
+<p align="right"><small>[*back to top*](#top)</small></p>  
 
 ### Independence {#independence}
 
-For either run or control charts, the data points must be independent for the guidelines to be effective. The first test of that is conceptual---do you expect that one value in this series will influence a subsequent value? For example, the incidence of some hospital-acquired infections can be the result of previous infections---say, one happens at the end of March, and another happens at the start of April, and were caused by the same organisim, you might suspect that the monthly values would not be independent. 
+For either run or control charts, the data points must be independent for the guidelines to be effective. The first test of that is conceptual---do you expect that one value in this series will influence a subsequent value? For example, the incidence of some hospital-acquired infections can be the result of previous infections---say, one happens at the end of March, and another happens at the start of April, and were caused by the same organism, you might suspect that the monthly values would not be independent. 
 
 A second test is by calculating the autocorrelation function for the time series. Autocorrelation values over 0.50 generally indicate problems. However, any significant autocorrelation should be considered carefully relative to the cost of potential false positive or false negative signals.   
 
@@ -593,7 +627,63 @@ When data are autocorrelated, control limits from the above chart types will be 
 
 Sometimes, autocorrelation can be removed by changing the sampling or metric's time step: for example, you generally wouldn't expect hospital acquired infection rates in one quarter to influence those in the subsequent quarter.   
 
-If you can't change the sampling rate or time step, you shouldn't use either run or control charts, and instead use a standard line chart. If you must have limits to help guide decision-making, you'll need a more advanced technique, such as a Generalized Addative Mixed Model (GAMM) or time series models such as ARIMA.  
+If you can't change the sampling rate or time step, you shouldn't use either run or control charts, and instead use a standard line chart. If you must have limits to help guide decision-making, you'll need a more advanced technique, such as a Generalized Additive Mixed Model (GAMM) or time series models such as ARIMA.  
+
+<p align="right"><small>[*back to top*](#top)</small></p>  
+
+### What happens when you get the mean-variance relationship wrong {#meanvar}
+
+Although control charts can sometimes work when you misspecify the mean-variance relationship (they are "robust" to some assumption violations), you won't know unless you explore the differences in implications between the data as-is and that same data transformed to become more in line with the appropriate or expected distribution. 
+
+For example, if you use standard normal control limits and sd values an *I* chart on exponentially-distributed data, you get something like this:
+
+```{r skewy, fig.height=3.5}
+set.seed(290)
+df2 = data.frame(x = seq(1:120), y = 17+rexp(120))
+
+# df_sum = data.frame(ymean=mean(df2$y), lcl=mean(df2$y)-(3*sd(df2$y)), ucl=mean(df2$y)+(3*sd(df2$y)), l1sd=mean(df2$y)-(sd(df2$y)), l2sd=mean(df2$y)-(2*sd(df2$y)), u1sd=mean(df2$y)+(sd(df2$y)), u2sd=mean(df2$y)+(2*sd(df2$y)))
+
+exp_nat_var_cc_plot = ggplot(df2, aes(x, y)) + 
+  ylim(14.75, 24.75) +
+  geom_hline(aes(yintercept=17.88), color="gray", size=1) +
+  geom_hline(aes(yintercept=20.87), color="red") +
+  geom_hline(aes(yintercept=14.88), color="red") +
+  geom_ribbon(aes(ymin = 18.87, ymax = 19.87), alpha = 0.2) +
+  geom_ribbon(aes(ymin = 15.88, ymax = 16.88), alpha = 0.2) +
+  xlab("Subgroup") + 
+  ylab("Value") +
+  geom_line() + 
+  theme_bw()
+
+ggMarginal(exp_nat_var_cc_plot, margins="y", type = "histogram", binwidth=0.25)
+
+# Transformation and adjustment for plotting easier
+bob = data.frame(MASS::boxcox(df2$y ~ 1, lambda=seq(-20, 5, 0.5), plotit=F))
+bobmax = bob[which.max(bob[,2]),1]
+df2$y2 = (df2$y ^ bobmax) * 10^19
+
+# df_sum = data.frame(ymean=mean(df2$y2), lcl=mean(df2$y2)-(3*sd(df2$y2)), ucl=mean(df2$y2)+(3*sd(df2$y2)), l1sd=mean(df2$y2)-(sd(df2$y2)), l2sd=mean(df2$y2)-(2*sd(df2$y2)), u1sd=mean(df2$y2)+(sd(df2$y2)), u2sd=mean(df2$y)+(2*sd(df2$y)))
+
+exp_xform_nat_var_cc_plot = ggplot(df2, aes(x, y2)) + 
+  ylim(-0.06, 0.31) +
+  geom_hline(aes(yintercept=0.128), color="gray", size=1) +
+  geom_hline(aes(yintercept=0.302), color="red") +
+  geom_hline(aes(yintercept=-0.046), color="red") +
+  geom_ribbon(aes(ymin = 0.186, ymax = 0.244), alpha = 0.2) +
+  geom_ribbon(aes(ymin = 0.012, ymax = 0.070), alpha = 0.2) +
+  xlab("Subgroup") + 
+  ylab("Transformed Value") +
+  geom_line() + 
+  theme_bw()
+```
+
+Clearly something is weird when no points even go below 1 standard deviation. But more importantly, do the points above the upper control limit represent *real* anomalous data points, or are they the result of an improper mean-variance relationship? 
+
+Using a Box-Cox transformation (not shown) to make the distribution more symmetrical, we can see that those seemingly out-of-control points are actually well within both control limits, and the variation we see is more in line with (statistical) expectation. 
+
+```{r unskewy, fig.height=3.5}
+ggMarginal(exp_xform_nat_var_cc_plot, margins="y", type = "histogram", binwidth=0.025)
+```
 
 <p align="right"><small>[*back to top*](#top)</small></p>  
 
@@ -613,26 +703,35 @@ Use common sense and avoid the urge to change medians or means+limits for every 
 
 - For more information, a good overview of run charts can be found in Perla et al. 2011, [*The run chart: a simple analytical tool for learning from variation in healthcare processes*](http://www.med.unc.edu/cce/files/education-training/The%20run%20chart%20a%20simple%20analytical%20tool.pdf), BMJ Quality & Safety 20:46-51.  
 
-- A straight-to-the-point reference/tool for doing run charts in R is Anhoej 2016, [*Run charts with R*](https://cran.r-project.org/web/packages/qicharts/vignettes/runcharts.html).
+- A straight-to-the-point reference/tool for doing run charts in R is Anhøj 2016, [*Run charts with R*](https://cran.r-project.org/web/packages/qicharts/vignettes/runcharts.html).
 
-- Some good overview papers on control charts include Benneyan et al. 2003, [*Statistical process control as a tool for research and healthcare improvement*](http://qualitysafety.bmj.com/content/12/6/458.full.pdf), BMJ Quality & Safety 12:458-464, and Mohammed et al. 2008, [*Plotting basic control charts: tutorial notes for healthcare practitioners*](https://www.researchgate.net/profile/William_Woodall/publication/5468089_Plotting_control_charts_Tutorial_notes_for_healthcare_practitioners/links/00b49521d1165f1f49000000.pdf), BMJ Quality & Safety 17:137-145.  
+- Some good overview papers on control charts include Benneyan et al. 2003, [*Statistical process control as a tool for research and healthcare improvement*](http://qualitysafety.bmj.com/content/12/6/458.full.pdf), BMJ Quality & Safety 12:458-464, and Mohammed et al. 2008, [*Plotting basic control charts: tutorial notes for healthcare practitioners*](https://www.researchgate.net/profile/William_Woodall/publication/5468089_Plotting_control_charts_Tutorial_notes_for_healthcare_practitioners/links/00b49521d1165f1f49000000.pdf), BMJ Quality & Safety 17:137-145. [Wheeler 2010](http://www.qualitydigest.com/inside/quality-insider-column/individual-charts-done-right-and-wrong.html) covers why you shouldn't use 3*sd* for control limits in *I* charts.    
 
-- A straight-to-the-point reference/tool for doing run charts in R is Anhoej 2016, [*Control Charts with qicharts for R*](https://cran.r-project.org/web/packages/qicharts/vignettes/controlcharts.html).
+- A straight-to-the-point reference/tool for doing control charts in R is Anhøj 2016, [*Control Charts with qicharts for R*](https://cran.r-project.org/web/packages/qicharts/vignettes/controlcharts.html).
 
 - A good basic overview book is Carey and Lloyd 2001, [*Measuring Quality Improvement in Healthcare*](https://www.amazon.com/Measuring-Quality-Improvement-Healthcare-Applications/dp/0527762938/), American Society for Quality.  
 
-- A good book that covers both basic and advanced topics is Provost and Murray 2011, [*The Health Care Data Guide*](https://www.amazon.com/Health-Care-Data-Guide-Improvement/dp/0470902582/), Jossey-Bass. 
+- A good book that covers both basic and advanced topics is Provost and Murray 2011, [*The Health Care Data Guide*](https://www.amazon.com/Health-Care-Data-Guide-Improvement/dp/0470902582/), Jossey-Bass.  
 
-- The papers that discuss the uselessness of the trend test in run and control charts include Davis & Woodall 1988, [*Performance of the control chart trend rule under linear shift*](http://asq.org/qic/display-item/index.pl?item=5597), Journal of Quality Technology 20:260-262, and Anhoj & Olesen 2014, [*Run charts revisited: A simulation study of run chart rules for detection of non-random variation in health care processes*](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0113825), PLOS One 9(11): e113825.
+- The papers that discuss the uselessness of the trend test in run and control charts include Davis & Woodall 1988, [*Performance of the control chart trend rule under linear shift*](http://asq.org/qic/display-item/index.pl?item=5597), Journal of Quality Technology 20:260-262, and Anhøj & Olesen 2014, [*Run charts revisited: A simulation study of run chart rules for detection of non-random variation in health care processes*](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0113825), PLOS One 9(11): e113825.
 
 - Finally, some important warnings about when control charts fail (and a useful alternative, GAMs) can be found in Morton et al. 2009, [*Hospital adverse events and control charts: the need for a new paradigm*](http://www.journalofhospitalinfection.com/article/S0195-6701(09)00340-5/abstract), Journal of Hospital Infection 73(3):225–231, as well as in Morton et al. 2007, [*New control chart methods for monitoring MROs in Hospitals*](https://www.researchgate.net/profile/Edward_Tong2/publication/43477704_New_control_chart_methods_for_monitoring_MROs_in_hospitals/links/5600d22e08aec948c4fa93cd.pdf), Australian Infection Control 12(1):14-18.    
 
+- Wikipedia is a good place to start learning about probability distributions and their mean-variance relationships, e.g., 
+    - [Poisson](https://en.wikipedia.org/wiki/Poisson_distribution)
+    - [binomial](https://en.wikipedia.org/wiki/Binomial_distribution)
+    - [normal](https://en.wikipedia.org/wiki/Normal_distribution)
+    - [geometric](https://en.wikipedia.org/wiki/Geometric_distribution)
+    - [Weibull](https://en.wikipedia.org/wiki/Weibull_distribution)
+    - [A gallery of distributions (NIST)](http://www.itl.nist.gov/div898/handbook/eda/section3/eda366.htm)
+    - [Common probability distributions: the data scientist’s crib sheet (Cloudera)](http://blog.cloudera.com/blog/2015/12/common-probability-distributions-the-data-scientists-crib-sheet/)  
+    
 <p align="right"><small>[*back to top*](#top)</small></p>  
 
 <br/>  
 <br/>  
 
-<hr/>
+<hr/>  
 
 ## Appendix 1: An R function for SPC plots {#appendix1}
 
