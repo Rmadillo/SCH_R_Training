@@ -184,7 +184,7 @@ Above all, remember that the decisions you make in constructing SPC charts *will
 | *Number of crossings:* Too many or too few median line crossings suggest a pattern inconsistent with natural variation. | *Number of crossings:* Too many or too few center line crossings suggest a pattern inconsistent with natural variation. | 
 | *Trend:* Seven or more consecutive points all increasing or all decreasing (though this is usually ineffective\*). | *Trend:* Seven or more consecutive points all increasing or all decreasing (though this is usually ineffective\*).  | 
 | *Cycles:* There are obvious cycles that are not linked to known causes such as seasonality. | *Cycles:* There are obvious cycles of any sort. | 
-| | *Reduced variation:* Eight or more consecutive points all within 1$\sigma$. | 
+| | *Reduced variation:* Fifteen or more consecutive points all within 1$\sigma$. | 
 | | *1$\sigma$ signal:* Four of five consecutive points are more than one standard deviation away from the mean. | 
 | | *2$\sigma$ signal:* Two of three consecutive points are more than two standard deviations away from the mean. |
 
@@ -292,23 +292,11 @@ The following flow chart can help you determine which kind of control chart you 
 
 - Ensure your data values and control limits make sense. For example, if you have proportion data and your control limits fall above 100 or below 0, there's clearly an error somewhere. Ditto with negative counts.  
 
-- For continuous data, the definition of the control limits will depend on your question and the data at hand. To detect small shifts in the mean quickly, an EWMA is probably best, while to understand natural variation and try to detect special cause variation, an $\bar{x}$ and *s* chart will be more useful.
-
-- In the rare cases you may need an individual chart, do *not* use 3*sd* for the control limits; you must use 2.66$MR_{bar}$ instead to ensure the limits are presented correctly.  
-
-- For count, rate, or proportion data, carefully define your numerator and denominator. Evaluate each separately over time to see whether there are any unusual features or patterns. Sometimes patterns can occur in one or the other, then disappear or are obscured when coalesced into a rate or proportion.  
-
-- For count data, prefer u-charts to c-charts. In most cases, we do not have a constant denominator, so c-charts would not be appropriate. Even when we do, using a u-chart helps reduce audience confusion because you are explicitly stating the "per *x*".    
-
-- For proportion data, prefer p-charts to np-charts. Again, we almost never have a constant denominator, so np-charts would not be appropriate. Even when we do, using a p-chart helps reduce audience confusion by explicitly stating the "per *x*".   
-
 - For raw ordinal data (such as likert scores), do not use means or control limits. Just. Don't. If you must plot a single value, convert to a proportion (e.g., "top box scores") first. However, stacked bar or mosaic charts help visualize this kind of data much better, and can be done in the same amount of space.    
 
 - Control charts don't measure "statistical significance"---they are meant to reduce the chances of incorrectly deciding whether a process is in (statistical) control or not. Control limits are *not* confidence limits.     
 
 - YTD comparisons don't work because they encourage naive, point-to-point comparisons and ignore natural variation---and can encourage inappropriate knee-jerk reactions. There is never useful information about a process in only one or two data points.  
-
-- Most control charts are suited to detect large shifts in process mean as well as special cause variation. EWMA charts and CUSUM charts are sensitive to small shifts in process mean, but are not useful for detecting special cause variation.  
 
 - A control chart should measure one defined process, so you may need to create multiple charts stratified by patient population, unit, medical service, time of day etc. to avoid mixture.   
 
@@ -335,6 +323,12 @@ The majority of healthcare metrics of concern are rates, so the most common cont
 | Proportions (with equal opportunity/constant denominator) | *np* chart | binomial | 
 | Rare events / infrequent counts (with equal opportunity/constant denominator) | *g* chart | geometric | 
 | Time between events | *t* chart | Weibull |
+
+- For count, rate, or proportion data, carefully define your numerator and denominator. Evaluate each separately over time to see whether there are any unusual features or patterns. Sometimes patterns can occur in one or the other, then disappear or are obscured when coalesced into a rate or proportion.  
+
+- For count data, prefer u-charts to c-charts. In most cases, we do not have a constant denominator, so c-charts would not be appropriate. Even when we do, using a u-chart helps reduce audience confusion because you are explicitly stating the "per *x*".    
+
+- For proportion data, prefer p-charts to np-charts. Again, we almost never have a constant denominator, so np-charts would not be appropriate. Even when we do, using a p-chart helps reduce audience confusion by explicitly stating the "per *x*".   
 
 #### *u* chart example
 
@@ -450,6 +444,11 @@ Note: *t* chart mean and limits can be transformed back to the original scale by
 | Exponentially weighted moving average (small process shifts) | EWMA chart | normal |
 | Cumulative sum (small process shifts) | CUSUM chart | normal |
 
+
+- For continuous data, the definition of the control limits will depend on your question and the data at hand. To detect small shifts in the mean quickly, an EWMA is probably best, while to understand natural variation and try to detect special cause variation, an $\bar{x}$ and *s* chart will be more useful.
+
+- In the rare cases you may need an individual chart, do *not* use 3*sd* for the control limits; you must use 2.66$MR_{bar}$ instead to ensure the limits are presented correctly.  
+
 Note: EWMA and CUSUM charts aren't "standard" control charts in that the only guideline for detecting special cause variation is a point outside the limits. So while they can't detect special cause variation like control charts, they *can* detect shifts in mean with fewer points than a standard control chart.  
 
 <br/>  
@@ -519,7 +518,7 @@ spc.plot(subgroup.x, point.x, mean.x, sigma.x, k = 3,
 
 #### EWMA chart example
 
-**3&sigma; control limits for exponentially weighted moving average (EWMA):**  $3\frac{\bar{s}}{\sqrt{n_i}}\sqrt{\frac{\lambda}{2-\lambda}[1 - (1 - \lambda)^{2i}]}$   
+**Control limits for exponentially weighted moving average (EWMA):**  $3\frac{\bar{s}}{\sqrt{n_i}}\sqrt{\frac{\lambda}{2-\lambda}[1 - (1 - \lambda)^{2i}]}$   
 &nbsp;&nbsp;&nbsp;&nbsp; *where* $\lambda$ is a weight that determines the influence of past observations. If unsure choose $\lambda = 0.2$, but $0.05 \leq \lambda \leq 0.3$ is acceptable (where larger values give stronger weights to past observations).
 
 <br/>  
