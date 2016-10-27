@@ -461,12 +461,48 @@ Note: EWMA and CUSUM charts aren't "standard" control charts in that the only gu
 &nbsp;&nbsp;&nbsp;&nbsp; *where*  
 &nbsp;&nbsp;&nbsp;&nbsp; $MR_{bar}$ = average moving range of *x*s, excluding those > 3.27$MR_{bar}$   
 
-```{r normy}
-# Something for I chart or not?
-#Use MR also?
-```
+<br/>  
+    
+*Lab results turnaround time*
+    
+```{r imrex, fig.height = 3.5}
 
-**FIGURE HERE?**
+# Generate sample data
+arrival <- cumsum(rexp(24, 1/10))
+process <- rnorm(24,5)
+exit <- matrix( , length(arrival))
+exit[1] <- arrival[1] + process[1]
+
+for (i in 1:length(arrival)) {
+    exit[i] <- max(arrival[i], exit[i-1]) + process[i]
+}
+
+# Calculate control chart inputs
+subgroup.i <- seq(1,length(exit))
+subgroup.mr <- seq(1,length(exit)-1)
+
+point.i <- exit - arrival
+point.mr <- matrix(, length(point.i) - 1)
+for (i in 1:length(point.i) - 1) {
+    point.mr[i] <- abs(point.i[i+1] - point.i[i])
+}
+
+mean.i <- mean(point.i)
+mean.mr <- mean(point.mr)
+sigma.i <- rep(mean.mr, length(subgroup.i))
+sigma.mr <- rep(mean.mr, length(subgroup.mr))
+
+# Plot MR chart
+spc.plot(subgroup.mr, point.mr, mean.mr, sigma.mr, k = 3.27, 
+         lcl.show = FALSE, band.show = FALSE, 
+         label.x = "Test number", label.y = "Turnaround time (moving range)")
+
+# Plot I chart
+spc.plot(subgroup.i, point.i, mean.i, sigma.i, k = 2.66,
+         lcl.min = 0, band.show = FALSE, 
+         label.x = "Test number", label.y = "Turnaround time")
+
+```
 
 <br/>
 
