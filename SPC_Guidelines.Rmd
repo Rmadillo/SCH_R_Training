@@ -50,7 +50,8 @@ require(qicharts)
 ``` {r spccode, echo = FALSE, fig.height = 3.5}
 
 spc.plot <- function(subgroup, point, mean, sigma, k = 3,
-                     ucl.show = TRUE, lcl.show = TRUE, band.show = TRUE,
+                     ucl.show = TRUE, lcl.show = TRUE, 
+                     band.show = TRUE, rule.show = TRUE,
                      ucl.max = Inf, lcl.min = -Inf,
                      label.x = "Subgroup", label.y = "Value")
 {
@@ -66,41 +67,67 @@ spc.plot <- function(subgroup, point, mean, sigma, k = 3,
     #   ucl.show: Visible upper control limit? Default is true.
     #   lcl.show: Visible lower control limit? Default is true.
     #   band.show: Visible bands between 1-2 sigma limits?  Default is true.
+    #   rule.show: Highlight run rule indicators in orange?  Default is true.
     #   ucl.max: Maximum feasible value for upper control limit.
     #   lcl.min: Minimum feasible value for lower control limit.
     #   label.x: Specify x-axis label.
     #   label.y: Specify y-axis label.
-
-
+    
+    
     df <- data.frame(subgroup, point)
     df$ucl <- pmin(ucl.max, mean + k*sigma)
     df$lcl <- pmax(lcl.min, mean - k*sigma)
-    df$outofcontrol <- point > df$ucl | point < df$lcl
+    
+    warn.points <- function(rule, num, den) {
+        sets <- mapply(seq, 1:(length(subgroup) - (den - 1)), 
+                       den:length(subgroup))
+        hits <- apply(sets, 2, function(x) sum(rule[x])) >= num
+        intersect(c(sets[,hits]), which(rule))
+    }
+    orange.sigma <- numeric()
     
     p <- ggplot(data = df, aes(x = subgroup)) +
         geom_hline(yintercept = mean, col = "gray", size = 1)
     
     if (ucl.show) {
-        p <- p + geom_line(aes(y = ucl), col = "red")
+        p <- p + geom_line(aes(y = ucl), col = "gray", size = 1)
     }
     
     if (lcl.show) {
-        p <- p + geom_line(aes(y = lcl), col = "red")
+        p <- p + geom_line(aes(y = lcl), col = "gray", size = 1)
     }
     
     if (band.show) {
         p <- p + 
             geom_ribbon(aes(ymin = mean + sigma, 
-                            ymax = mean + 2*sigma), alpha = 0.2) +
+                            ymax = mean + 2*sigma), alpha = 0.1) +
             geom_ribbon(aes(ymin = pmax(lcl.min, mean - 2*sigma),  
-                            ymax = mean - sigma), alpha = 0.2)
+                            ymax = mean - sigma), alpha = 0.1)
+        
+        orange.sigma <- unique(c(
+            warn.points(point > mean + sigma, 4, 5),
+            warn.points(point < mean - sigma, 4, 5),
+            warn.points(point > mean + 2*sigma, 2, 3),
+            warn.points(point < mean - 2*sigma, 2, 3)
+        ))
     }
+
+    df$warn <- "blue"
+    if (rule.show) {
+        shift.n <- round(log(sum(point!=mean), 2) + 3)
+        orange <- unique(c(orange.sigma,
+        warn.points(point > mean - sigma & point < mean + sigma, 15, 15),
+        warn.points(point > mean, shift.n, shift.n),
+        warn.points(point < mean, shift.n, shift.n)))
+        df$warn[orange] <- "orange"
+    }
+    df$warn[point > df$ucl | point < df$lcl] <- "red"
     
     p + 
-        geom_line(aes(y = point), col = "blue") +
-        geom_point(aes(y = point, col = outofcontrol)) +
-        scale_color_manual(values = c("blue", "red"), guide = FALSE) +
-        labs(x = label.x, y =label.y) +
+        geom_line(aes(y = point), col = "royalblue3") +
+        geom_point(data = df, aes(x = subgroup, y = point, col = warn)) +
+        scale_color_manual(values = c("blue" = "royalblue3", "orange" = "orangered", "red" = "red3"), guide = FALSE) +
+        labs(x = label.x, y = label.y) +
         theme_bw()
 }
 
@@ -109,7 +136,7 @@ spc.plot <- function(subgroup, point, mean, sigma, k = 3,
 ``` {r sgnlex, echo = FALSE, fig.height = 3.5}
 
 # Example points for signal rules of thumb
-point.signal <- c(0.36, -0.25, 1.07, 0.67, -1.07, 0, 0.72, 1.82, -1.50, -1.29)
+point.signal <- c(0.36, -0.25, 1.07, 0.67, -1.07, 0, 0.72, 1.82, -1.50, -0.99)
 point.signal[11] <- 3.4
 point.signal[12:14] <- c(-2.3, -1.5, -2.5)
 point.signal[15:19] <- c(1.4, 1.8, 1.3, 0.2, 1.6)
@@ -578,7 +605,7 @@ sigma.z <- (mean.s / sqrt(sample.n)) *
      sqrt(lambda/(2-lambda) * (1 - (1-lambda)^(seq(1:length(point.z)))))
  
 # Plot EWMA chart
-spc.plot(subgroup.z, point.z, mean.z, sigma.z, k = 3, band.show = FALSE,
+spc.plot(subgroup.z, point.z, mean.z, sigma.z, k = 3, band.show = FALSE, rule.show = FALSE,
           label.x = "Month", label.y = "Wait times moving average")
  
 ```
@@ -626,10 +653,10 @@ sigma.cusum <- rep(1, length(subgroup.cusum))
 
 # Plot CUSUM chart
 lower.plot <- spc.plot(subgroup.cusum, point.cusuml, mean.cusum, sigma.cusum, k = 5, 
-         band.show = FALSE, label.y = "Cumulative sum")
+         band.show = FALSE, rule.show = FALSE, label.y = "Cumulative sum")
 
-lower.plot + geom_line(aes(y = point.cusumh), col = "blue") +
-    geom_point(aes(y = point.cusumh), col = "blue")
+lower.plot + geom_line(aes(y = point.cusumh), col = "royalblue3") +
+    geom_point(aes(y = point.cusumh), col = "royalblue3")
 
 ```
 
@@ -776,7 +803,8 @@ The R packages `qcc` and `qicharts` can create ready-to-go control charts from a
 require(ggplot2)
 
 spc.plot <- function(subgroup, point, mean, sigma, k = 3,
-                     ucl.show = TRUE, lcl.show = TRUE, band.show = TRUE,
+                     ucl.show = TRUE, lcl.show = TRUE, 
+                     band.show = TRUE, rule.show = TRUE,
                      ucl.max = Inf, lcl.min = -Inf,
                      label.x = "Subgroup", label.y = "Value")
 {
@@ -792,41 +820,67 @@ spc.plot <- function(subgroup, point, mean, sigma, k = 3,
     #   ucl.show: Visible upper control limit? Default is true.
     #   lcl.show: Visible lower control limit? Default is true.
     #   band.show: Visible bands between 1-2 sigma limits?  Default is true.
+    #   rule.show: Highlight run rule indicators in orange?  Default is true.
     #   ucl.max: Maximum feasible value for upper control limit.
     #   lcl.min: Minimum feasible value for lower control limit.
     #   label.x: Specify x-axis label.
     #   label.y: Specify y-axis label.
-
-
+    
+    
     df <- data.frame(subgroup, point)
     df$ucl <- pmin(ucl.max, mean + k*sigma)
     df$lcl <- pmax(lcl.min, mean - k*sigma)
-    df$outofcontrol <- point > df$ucl | point < df$lcl
+    
+    warn.points <- function(rule, num, den) {
+        sets <- mapply(seq, 1:(length(subgroup) - (den - 1)), 
+                       den:length(subgroup))
+        hits <- apply(sets, 2, function(x) sum(rule[x])) >= num
+        intersect(c(sets[,hits]), which(rule))
+    }
+    orange.sigma <- numeric()
     
     p <- ggplot(data = df, aes(x = subgroup)) +
         geom_hline(yintercept = mean, col = "gray", size = 1)
     
     if (ucl.show) {
-        p <- p + geom_line(aes(y = ucl), col = "red")
+        p <- p + geom_line(aes(y = ucl), col = "gray", size = 1)
     }
     
     if (lcl.show) {
-        p <- p + geom_line(aes(y = lcl), col = "red")
+        p <- p + geom_line(aes(y = lcl), col = "gray", size = 1)
     }
     
     if (band.show) {
         p <- p + 
             geom_ribbon(aes(ymin = mean + sigma, 
-                            ymax = mean + 2*sigma), alpha = 0.2) +
+                            ymax = mean + 2*sigma), alpha = 0.1) +
             geom_ribbon(aes(ymin = pmax(lcl.min, mean - 2*sigma),  
-                            ymax = mean - sigma), alpha = 0.2)
+                            ymax = mean - sigma), alpha = 0.1)
+        
+        orange.sigma <- unique(c(
+            warn.points(point > mean + sigma, 4, 5),
+            warn.points(point < mean - sigma, 4, 5),
+            warn.points(point > mean + 2*sigma, 2, 3),
+            warn.points(point < mean - 2*sigma, 2, 3)
+        ))
     }
+
+    df$warn <- "blue"
+    if (rule.show) {
+        shift.n <- round(log(sum(point!=mean), 2) + 3)
+        orange <- unique(c(orange.sigma,
+        warn.points(point > mean - sigma & point < mean + sigma, 15, 15),
+        warn.points(point > mean, shift.n, shift.n),
+        warn.points(point < mean, shift.n, shift.n)))
+        df$warn[orange] <- "orange"
+    }
+    df$warn[point > df$ucl | point < df$lcl] <- "red"
     
     p + 
-        geom_line(aes(y = point), col = "blue") +
-        geom_point(aes(y = point, col = outofcontrol)) +
-        scale_color_manual(values = c("blue", "red"), guide = FALSE) +
-        labs(x = label.x, y =label.y) +
+        geom_line(aes(y = point), col = "royalblue3") +
+        geom_point(data = df, aes(x = subgroup, y = point, col = warn)) +
+        scale_color_manual(values = c("blue" = "royalblue3", "orange" = "orangered", "red" = "red3"), guide = FALSE) +
+        labs(x = label.x, y = label.y) +
         theme_bw()
 }
 
