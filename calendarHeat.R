@@ -26,7 +26,7 @@
 # This version puts all years on the same page and trims space between
 # fix was in layout and between 
 
-function(dates, 
+calendarHeat =  function(dates, 
                          values, 
                          ncolors=99, 
                          color="r2g", 
