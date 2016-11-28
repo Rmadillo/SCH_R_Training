@@ -1,29 +1,30 @@
 #######################################################
 # Threshold Explorer Shiny App
 # Dwight Barry
-# 3 November 2016
-# Version 0.9.1 
+# 28 November 2016
+# Version 0.9.2 
 # setwd("C:/Users/DBARR1/Documents/Rcode/shiny")
 #######################################################
 
 ##### Global #####
 
 # Load Packages
-require(shiny)
-require(ggplot2)
-require(dplyr)
-require(ROCR)
-require(htmlTable)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(ROCR)
+library(htmlTable)
+library(gridExtra)
 
 # Load Data
 #data("ROCR.simple")
 #dataset = data.frame(Prediction = ROCR.simple$predictions, Outcome = ROCR.simple$labels)
 
 # ED 2 hour model -- random forest
-#dataset = read.csv("edv2.csv", header=T)
+dataset = read.csv("edv2.csv", header=T)
 
 # ED 4 hour model -- adaBoost
-dataset = read.csv("edv4.csv", header=T)
+#dataset = read.csv("edv4.csv", header=T)
 
 # Make labels a factor and add a Noise variable for comparison
 #dataset$Outcome_Factor = ordered(ifelse(dataset$Outcome == 1, "Yes", "No"))
@@ -90,7 +91,7 @@ ui = shinyUI(fluidPage(
                numericInput('threshold', 'Select Threshold',
                             value = 0.50,
                             min = 0.00,
-                            step = 0.01,
+                            step = 0.1,
                             max = 1.00),
                numericInput('fp', 'Select False Positive Cost',
                             value = 1,
@@ -111,8 +112,8 @@ ui = shinyUI(fluidPage(
         # Cost Curve
         column(3,
                br(),
-               HTML('<b>Cost Curve</b>'),
-               plotOutput("cost_curve", height = 300)
+               HTML('<b>Tradeoff Curves</b><br><br>'),
+               plotOutput("cost_curve")
                
         ),  
                 
@@ -227,11 +228,10 @@ server = shinyServer(function(input, output) {
         spec = spec_perf@y.values[[1]]
         prec = prec_perf@y.values[[1]]
         npv = npv_perf@y.values[[1]]
-        acc = acc_perf@y.values[[1]]
-        odds = odds_perf@y.values[[1]]
+        # acc = acc_perf@y.values[[1]]
         lift = lift_perf@y.values[[1]]
         
-        thresh_frame = data.frame(thresh, sens, fpr, fnr, spec, prec, npv, acc, odds, lift)
+        thresh_frame = data.frame(thresh, sens, fpr, fnr, spec, prec, npv, lift)
         outy = head(thresh_frame[which(thresh_frame$thres == input$threshold),], 1)
         
         prbe_perf = performance(eval, measure="prbe")
@@ -239,7 +239,7 @@ server = shinyServer(function(input, output) {
         
         ssbe = performance(eval, "sens", "spec")
         
-        # Balance accuracy
+        # Balanced accuracy
         pred_val = as.factor(ifelse(dataset[,input$x] < input$threshold,
                                     "Predict: Green/Yellow", "Predict: Orange/Red"))
         pred_val = ordered(pred_val, levels = c("Predict: Orange/Red", 
@@ -254,8 +254,7 @@ server = shinyServer(function(input, output) {
         # Return values
         paste0("<br>Sensitivity and specificity are maximized at a threshold of ",
                round(ssbe@alpha.values[[1]][which.max(ssbe@x.values[[1]]+ssbe@y.values[[1]])], 2), ".<br>",
-               "<br>Precision and recall break-even (", round(max(prbe[2]), 2),
-                    ") occurs at a threshold of ", round(min(prbe[1]), 2), ".<br>", 
+               "<br>Precision and recall break-even occurs at a threshold of ", round(min(prbe[1]), 2), ".<br>", 
                
                "<br><i>Given a threshold of ", outy$thresh, 
                     ", the classification metrics are:</i>",
@@ -265,9 +264,8 @@ server = shinyServer(function(input, output) {
                "<br>True Negative Rate (Specificity): ", round(outy$spec,2),
                "<br>Positive Predictive Value (Precision): ", round(outy$prec,2),
                "<br>Negative Predictive Value: ", round(outy$npv,2),
-               "<br>Raw Accuracy: ", round(outy$acc,2),
+               #"<br>Raw Accuracy: ", round(outy$acc,2),
                "<br>Balanced Accuracy: ", round(bal_acc,2),
-               "<br>Odds Ratio: ", round(outy$odds,2),
                "<br>Lift: ", round(outy$lift,1)
                )
         
@@ -301,8 +299,11 @@ server = shinyServer(function(input, output) {
                                                 "Predict: Green/Yellow"))
         real_val = dataset[,input$y]
         real_val = ordered(real_val, levels = c("Orange/Red", "Green/Yellow"))
-        txtRound(addmargins(table(pred_val, real_val)), 0)
-    }, align='rrrr')
+        dammit = txtRound(addmargins(table(pred_val, real_val)), 0)
+        bob = as.data.frame.matrix(dammit)
+        bob
+    }, include.rownames=TRUE, align='rrr')
+    
     
     # Confusion matrix table for proportions
     output$confu_tab2 = renderTable({
@@ -312,23 +313,30 @@ server = shinyServer(function(input, output) {
                                         "Predict: Green/Yellow"))
         real_val = dataset[,input$y]
         real_val = ordered(real_val, levels = c("Orange/Red", "Green/Yellow"))
-        addmargins(prop.table(table(pred_val, real_val)))
-    })
+        damnit = addmargins(prop.table(table(pred_val, real_val)))
+        
+        bob2 = as.data.frame.matrix(damnit)
+        bob2
+    }, include.rownames=TRUE, align='rrr')
     
-    # Cost curve calcs and plot
+    # Cost, precision, and sensitivity curve calcs and plot
     output$cost_curve = renderPlot({
         
         eval = prediction(dataset[,input$x], dataset[,input$y])
         
         cost_perf = performance(eval, measure = "cost", cost.fp = input$fp,
              cost.fn = input$fn)
+        sens_perf = performance(eval, measure="sens")
+        prec_perf = performance(eval, measure="prec")
         
         thresh = cost_perf@x.values[[1]]
         cost = cost_perf@y.values[[1]]
+        sens = sens_perf@y.values[[1]]
+        prec = prec_perf@y.values[[1]]
         
-        cost_frame = data.frame(thresh, cost)
+        prec_frame = data.frame(thresh, prec, sens, cost)
         
-        cp = ggplot(data = cost_frame, aes(x = thresh, y = cost)) + 
+        cp = ggplot(data = prec_frame, aes(x = thresh, y = cost)) + 
             geom_line(na.rm = T) + 
             xlab(input$x) +
             ylab("Cost") +
@@ -336,7 +344,23 @@ server = shinyServer(function(input, output) {
                 color="blue") +
             theme_bw()
         
-        print(cp)
+        ppvp = ggplot(data = prec_frame, aes(x = thresh, y = prec)) + 
+            geom_line(na.rm = T) + 
+            xlab(input$x) +
+            ylab("Precision") +
+            geom_vline(aes(xintercept = input$threshold), linetype = "dashed",
+                color="blue") +
+            theme_bw()
+        
+        sensp = ggplot(data = prec_frame, aes(x = thresh, y = sens)) + 
+            geom_line(na.rm = T) + 
+            xlab(input$x) +
+            ylab("Sensitivity") +
+            geom_vline(aes(xintercept = input$threshold), linetype = "dashed",
+                color="blue") +
+            theme_bw()
+        
+        print(grid.arrange(ppvp, sensp, cp, ncol=1))
         
     })
     
