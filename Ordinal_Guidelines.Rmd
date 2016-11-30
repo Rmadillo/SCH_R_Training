@@ -1,0 +1,190 @@
+---
+output: html_document
+---
+ 
+<style>
+  .col2 {
+    columns: 2 200px;         /* number of columns and width in pixels*/
+    -webkit-columns: 2 200px; /* chrome, safari */
+    -moz-columns: 2 200px;    /* firefox */
+  }
+  .col3 {
+    columns: 3 100px;
+    -webkit-columns: 3 100px;
+    -moz-columns: 3 100px;
+  }
+</style>
+ 
+<center>
+![SCH Logo](http://www.seattlechildrens.org/uploadedImages/Siteroot_Resources/Global_Settings/logo_main_sch.gif) 
+<p style="color:#0090b4; font-family:Arial"><i><b>Analytics Guidelines Series</i></b></p>
+<br>
+ 
+# Do not use means on Likert scale data
+ 
+</center> 
+ 
+<br>  
+ 
+### Seattle Children's Hospital
+ 
+**Dwight Barry, PhD**  
+*Enterprise Analytics*  
+ 
+*`r format(Sys.Date(), "%d %B %Y")`*   
+   
+ 
+<hr>  
+ 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+ 
+# Packages
+library(grid)
+library(knitr)
+library(ggplot2)
+library(tidyr)
+library(likert)
+ 
+# Data
+person = c('A','B','C','D','E','F')
+year1 = c(5,4,4,4,4,4)
+year2 = c(2,5,5,5,5,4)
+year3 = c(3,5,5,5,5,3)
+year4 = c(1,5,5,5,5,5)
+ 
+ex_1 = data.frame(person, year1, year2, year3, year4)
+ 
+ex_1_long = reshape2::melt(ex_1)
+ 
+```
+ 
+ 
+## Summary
+ 
+- Likert and similar ordinal-level scales have a variety of uses, particularly within surveys such as Family Experience, Culture of Safety, and Employee Engagement. They also occur in clinical care, for example, in the use of pain scores.  
+ 
+- When evalauted improperly---particularly through the use of average values---the results obtained at the population level can be strikingly misleading. Obviously, misleading results could drive or promote action where none is warranted.
+ 
+- In nearly all cases, **taking the average of a Likert-scale variable will not provide useful answers** to the questions end-users can use to make actionable decisions. Analysts should strive to avoid their use in any reporting solution or analytic product.  
+ 
+- Better ways to represent ordinal-value results include histograms of the values themselves, the use of well-supported "top-box"-type proportions, and/or bar charts of percentage by score or score category (e.g., favorable/neutral/unfavorable). 
+ 
+- A good way to remember not to use means on Likert scales is to think: "The average of Good and Excellent is *not* Good-And-A-Half". 
+ 
+## Discussion
+ 
+### A simple example 
+ 
+Take a simple example where a group of 6 people people take the same survey for 4 years, and the mean results for an important question are as follows: 
+ 
+Taking the mean of these results gives you this:
+ 
+| year 1 | year 2 | year 3 | year 4 | 
+| ------ | ------ | ------ | ------ |
+| `r mean(year1)` | `r mean(year2)` | `r mean(year3)` | `r mean(year4)` |
+ 
+So one might conclude that there is an improvement from year 1 to year 2, and no change year-over-year after year 2. 
+ 
+The values that created the above results are as follows:  
+ 
+```{r ex_1_table}
+kable(ex_1)
+```
+ 
+You might already see how mangement decisions would be made differently in each case. 
+ 
+However, in the latter case, you risk reducing or eliminating anonymtity, which is essential toward getting respondents to answer truthfully. Further, poring over tables of answers for many people for long surveys makes that approach practically infeasible. Visualizing the results in ways that capture a more complete story provides an answer to both issues, as well as providing decision-makers with truly-actionable information.
+ 
+### Visualizing Likert-scale data
+ 
+#### Histograms
+ 
+<div class="col2">
+ 
+ 
+blah blah blah  stuff here    
+ 
+ 
+```{r histos, fig.height=4, fig.width=3}
+ggplot(ex_1_long, aes(value)) +
+    geom_histogram(binwidth=1) +
+    facet_wrap(~variable, ncol=1) +
+    xlab("Likert Scale Value") +
+    theme_bw()
+```
+ 
+ 
+</div>  
+ 
+#### Likert charts
+ 
+<div class="col2">
+ 
+blah blah blah stuff here on likerts  
+ 
+```{r ex_1_likert}
+ex_1[2:5] = lapply(ex_1[2:5], factor, levels=1:5)
+ex_1_likert = likert(ex_1[2:5])
+plot(ex_1_likert, ordered=FALSE, group.order=names(ex_1[2:5]))
+```
+ 
+</div>  
+ 
+### How many respondents are enough?
+ 
+Typical practice is to expose summary results for groups with at least 6 people. While this helps preserve *some* anonymity, it does not include enough repsonses to ensure the overall response is stable. 
+ 
+You need at least 16-20 responses before you can consider a response's results stable. 
+ 
+Use NY health example.  
+ 
+ 
+### Is there a significant difference?  
+ 
+Who cares?
+ 
+```{r this_is_wrong}
+t.test(year1,year2)
+```
+
+### *Neutral* scores matters
+
+Note on why having *Neutral* drags stuff to middle, biases mean on top of that. 
+
+### Other ordinal-scale visualizations
+ 
+```{r likert_viz}
+set.seed(29)
+md = data.frame(Group = as.character("MD"), Response1 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.1,.1,.2,.5))), Response2 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.3,.3,.25,.15))))
+rn = data.frame(Group = as.character("RN"), Response1 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.1,.5,.2,.1))), Response2 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.15,.45,.15,.15))))
+ 
+both = rbind(md, rn)
+ 
+make_NAs = sample(1:200, 15, replace=F)
+both$Response1[make_NAs] = NA
+ 
+make_NAs2 = sample(1:200, 15, replace=F)
+both$Response2[make_NAs2] = NA
+ 
+names(both) = c("EmployeeType", "My team works well together.", "I have the tools I need to do my job.")
+ 
+ex_2_likert = likert(both[2:3])
+    
+plot(ex_2_likert, include.histogram = TRUE)
+ 
+both_likert_2 = likert(both[, c(2:3), drop=FALSE], grouping = both$EmployeeType)
+    
+plot(both_likert_2, include.histogram = TRUE)
+plot(ex_1_likert, type="density")
+plot(ex_1_likert, type="heat")
+```
+ 
+##### Parking lot
+ 
+    likert_levels = c('Strongly Disagree', 'Disagree', 'Neither', 'Agree', 'Strongly Agree')
+    
+    test <- factor(sample(mylevels[1:5], 10, replace=TRUE))
+    
+    ex_1_l = lapply(ex_1[2:5], ordered, levels=likert_levels)
+    
