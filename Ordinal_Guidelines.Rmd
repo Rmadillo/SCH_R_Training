@@ -1,5 +1,7 @@
 ---
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
  
 <style>
@@ -37,16 +39,21 @@ output: html_document
 <hr>  
  
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.height = 3, fig.align = "center")
  
 # Packages
 library(grid)
+library(coin)
+library(boot)
+library(simpleboot)
 library(knitr)
 library(ggplot2)
 library(tidyr)
 library(likert)
  
 # Data
+
+# Basic example data set
 person = c('A','B','C','D','E','F')
 year1 = c(5,4,4,4,4,4)
 year2 = c(2,5,5,5,5,4)
@@ -56,7 +63,24 @@ year4 = c(1,5,5,5,5,5)
 ex_1 = data.frame(person, year1, year2, year3, year4)
  
 ex_1_long = reshape2::melt(ex_1)
+
+# Larger example data set
+set.seed(29)
+md = data.frame(Group = as.character("MD"), Response1 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.1,.1,.2,.5))), Response2 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.3,.3,.25,.15))))
+rn = data.frame(Group = as.character("RN"), Response1 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.1,.5,.2,.1))), Response2 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.15,.45,.15,.15))))
  
+both = rbind(md, rn)
+ 
+make_NAs = sample(1:200, 15, replace=F)
+both$Response1[make_NAs] = NA
+ 
+make_NAs2 = sample(1:200, 15, replace=F)
+both$Response2[make_NAs2] = NA
+ 
+names(both) = c("EmployeeType", "My team works well together.", "I have the tools I need to do my job.")
+
+# Save for revision
+# likert_levels = c('Strongly Disagree', 'Disagree', 'Neither', 'Agree', 'Strongly Agree')
 ```
  
  
@@ -64,19 +88,23 @@ ex_1_long = reshape2::melt(ex_1)
  
 - Likert and similar ordinal-level scales have a variety of uses, particularly within surveys such as Family Experience, Culture of Safety, and Employee Engagement. They also occur in clinical care, for example, in the use of pain scores.  
  
-- When evalauted improperly---particularly through the use of average values---the results obtained at the population level can be strikingly misleading. Obviously, misleading results could drive or promote action where none is warranted.
+- When evaluated improperly---particularly through the use of averages---the results can be strikingly misleading. Obviously, misleading results could drive or promote action where none is warranted, and vice versa.  
  
-- In nearly all cases, **taking the average of a Likert-scale variable will not provide useful answers** to the questions end-users can use to make actionable decisions. Analysts should strive to avoid their use in any reporting solution or analytic product.  
+- In nearly all cases, not only is it mathematically wrong, **taking the average of a Likert-scale variable will *not* provide useful answers** to the questions end-users can use to make actionable decisions. Analysts should strive to avoid their use in any reporting solution or analytic product.  
  
 - Better ways to represent ordinal-value results include histograms of the values themselves, the use of well-supported "top-box"-type proportions, and/or bar charts of percentage by score or score category (e.g., favorable/neutral/unfavorable). 
+
+- "Statistical significance" on changes or differences between response groups' medians or distribution shift  can be assessed through non-parametric frequentist tests (permutation, Mann-Whitney-Wilcoxon), Information Theory, or Bayesian analysis. *t*-tests should never be used on Likert scales because ordinal data does not meet the assumptions of a *t*-test. Also, when using frequentist tools, one must *also* account for multiple testing to reduce the chance of false positives.  
  
-- A good way to remember not to use means on Likert scales is to think: "The average of Good and Excellent is *not* Good-And-A-Half". 
+- A good way to remember not to use means on Likert scale data is to think: "The average of Good and Excellent is *not* Good-And-A-Half". 
  
 ## Discussion
- 
+
+*Note: all of the data in this document is fake, created using random number generators specifically to illustrate particular points.*  
+
 ### A simple example 
  
-Take a simple example where a group of 6 people people take the same survey for 4 years, and the mean results for an important question are as follows: 
+Take a simple example where a group of 6 people people take the same survey for 4 years, and the mean results for an important question, such as "my team works well together", are as follows: 
  
 Taking the mean of these results gives you this:
  
@@ -92,21 +120,19 @@ The values that created the above results are as follows:
 kable(ex_1)
 ```
  
-You might already see how mangement decisions would be made differently in each case. 
+You might already see how management decisions would be made differently based on whether one had just the means or had the complete data. 
  
-However, in the latter case, you risk reducing or eliminating anonymtity, which is essential toward getting respondents to answer truthfully. Further, poring over tables of answers for many people for long surveys makes that approach practically infeasible. Visualizing the results in ways that capture a more complete story provides an answer to both issues, as well as providing decision-makers with truly-actionable information.
+However, in the latter case, you risk reducing or eliminating anonymity, which is essential toward getting respondents to answer truthfully (not to mention being unethical). Further, poring over tables of answers for many people for long surveys makes that approach practically infeasible. Visualizing the results in ways that capture a more complete story provides an answer to both issues, as well as providing decision-makers with truly-actionable information.
  
 ### Visualizing Likert-scale data
  
 #### Histograms
  
-<div class="col2">
+Histograms of the actual score values are the best way to visualize Likert data---they have two real axes, showing counts by score value or category, so you can parse the visual and understand the results very quickly. Using the same data as above, one can instantly see that the "improvement" in year 2 was perhaps not an improvement after all; while most respondents appear to be satisfied above what they thought in year 1, one respondent may be at risk of leaving.        
+
+*Figure 1. Histogram of example Likert scale data.*  
  
- 
-blah blah blah  stuff here    
- 
- 
-```{r histos, fig.height=4, fig.width=3}
+```{r histos, fig.height=6}
 ggplot(ex_1_long, aes(value)) +
     geom_histogram(binwidth=1) +
     facet_wrap(~variable, ncol=1) +
@@ -115,76 +141,502 @@ ggplot(ex_1_long, aes(value)) +
 ```
  
  
-</div>  
- 
 #### Likert charts
  
-<div class="col2">
- 
-blah blah blah stuff here on likerts  
+The main disadvantage of histograms is space; Likert charts---which are in essence just stacked bar charts---are far more compact. The disadvantage is that it takes slightly longer for a user to parse them, but when faced with lots of questions or groupings, they tend to be the best option.  
+
+There are two kinds of Likert charts---those that use a center line for a point of reference, and those that do not, in which case they are simply percentage bar charts or mosaic plots. In the graphs below, each score value has its own color, and each score category---e.g., unfavorable is 1-2, neutral is 3, and favorable is 4-5 on a 5-point scale---is summarized by a percentage value at the left, middle/interior, and right sides of the bar, respectively.    
+
+*Figure 2. Centered Likert chart.*  
  
 ```{r ex_1_likert}
 ex_1[2:5] = lapply(ex_1[2:5], factor, levels=1:5)
 ex_1_likert = likert(ex_1[2:5])
-plot(ex_1_likert, ordered=FALSE, group.order=names(ex_1[2:5]))
+plot(ex_1_likert, ordered = FALSE, group.order = names(ex_1[2:5]))
 ```
- 
-</div>  
- 
+
+*Figure 3. Uncentered Likert chart (aka percent bar chart).*  
+
+```{r ex_1_likert_percent}
+plot(ex_1_likert, ordered = FALSE, centered = FALSE, group.order=names(ex_1[2:5]))
+```
+
+Neither Likert chart type does as good a job as the histogram at making the results immediately understandable, but again, histograms take more space, and busy decision makers often need to see the forest (all the questions) at the expense of some trees (each question). In this case, analysts might use the histograms to explore potentially important results themselves, and then use Likert charts in a report with some strategically-placed text highlighting important patterns they found with the histograms.  
+
 ### How many respondents are enough?
  
-Typical practice is to expose summary results for groups with at least 6 people. While this helps preserve *some* anonymity, it does not include enough repsonses to ensure the overall response is stable. 
+It's common to think: "We surveyed everyone in this department, therefore the results we see must be correct." However, how people responded to surveys depends on many factors---such as mood the date the survey is taken, recent events in life and in work, changes in organizational structure, and any number of other factors---and many internal surveys are given only once a year. Thus, survey results are really a *sample* of attitudes and opinions, subject to random events and natural fluctuations. 
  
-You need at least 16-20 responses before you can consider a response's results stable. 
- 
-Use NY health example.  
+Typical practice at SCH is to expose summary results for groups with at least 6 people. While this helps preserve some anonymity, it does not include enough responses to ensure the overall response is stable. Comparisons over time or across groups that are not based on stable results can lead to incorrect conclusions about differences that may or may not be real.   
+
+In this context, *stable* means that the data accurately represent true changes (or lack of change) in the question at hand. It's basically impossible to distinguish natural variation from real change when you have small numbers of respondents. As a result, the National Center for Health Statistics, for example, does not publish results with less than 20 distinct cases or responses. 
+
+The relative standard error (RSE) is the metric used to evaluate whether you have enough values for the results to be stable. The standard error is an estimate of the likely difference between the results and the true value (which in surveys, even of complete populations, can't be known exactly due to the reasons mentioned above). The *relative* standard error is the standard error expressed as a percent of the measure or number of responses, which is a constant function: $\frac{1}{\sqrt{responses}} * 100$. Generally, you want RSE values less than 20-25% to have some confidence that your results are stable. 
+
+*Figure 4. The RSE-response count function. The RSE associated with the use of 6 responses is marked with dark red, and the response count associated with an RSE of 25% is marked with dark blue.*  
+
+```{r rse, fig.width=8, fig.height=4.5}
+x = seq(1:50)
+rse = data.frame(x = x, y = (1 / sqrt(x)) * 100)
+
+ggplot(rse, aes(x = x, y = y)) +
+  geom_line() +
+  geom_segment(aes(x=6, y=0, xend=6, yend=41), color="darkred", arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_segment(aes(x=6, y=41, xend=0, yend=41), color="darkred", arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_label(aes(x=6, y=-5), label = "6") +
+  geom_label(aes(x=-1.75, y=41), label = "41") +
+  geom_segment(aes(x=16, y=25, xend=16, yend=0), color="darkblue", arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_segment(aes(x=0, y=25, xend=16, yend=25), color="darkblue", arrow = arrow(length = unit(0.25, "cm"))) +
+  geom_label(aes(x=16, y=-5), label = "16") +
+  geom_label(aes(x=-1.75, y=25), label = "25") +
+  xlab("Number of responses") +
+  ylab("Relative Standard Error")
+
+```
+
  
  
 ### Is there a significant difference?  
  
-Who cares?
+Many decision-makers want to know if a result is "statistically-significantly different" from, say, the same response from a previous time period, or between a couple of subgroups in the same response. Unfortunately, this is mostly useless, for two reasons. 
+
+First, acting as if Likert or other ordinal scales are continuous level data leads to many problems of interpretation (see the [Appendix](#Appendix) for a general overview of measurement scales and appropriate statistics). There has been controversy over this distinction for many decades; however, a great way to understand the conceptual problem is to realize that the mean of *Agree* and *Strongly Agree* is *not* Agree-And-A-Half---it just makes no sense. A subsequent argument might be that, no, it's not conceptually accurate, but it provides a sense for directional changes. However, such results still run into problems of interpretation: if you go from 4.16 to 4.33, have you gone from Agree.16 to Agree.33? What does such an "improvement" mean, in practical terms? All you can accurately say is that both values are most consistent with an *Agree* opinion. 
+
+Specifically in the medicine/healthcare context, [Kuzon et al.](https://www.ncbi.nlm.nih.gov/pubmed/8883724) state that the use of parametric statistics on ordinal data (such calculating a mean or using a *t*-test) is the first of "The seven deadly sins of statistical analysis".  
+
+One way around this is to use medians and test for differences in those statistics (with medians, the difference is best assessed via bootstrap or permutation testing) or to test whether the distribution has shifted (Mann-Whitney-Wilcoxon test). These options are the statistically-correct way to do it using traditional frequentist statistics. So, using the simple example above, we'd want to know whether the median is statistically different between year 1 (Median = `r median(year1)`) and year 2 (Median = `r median(year2)`). 
  
-```{r this_is_wrong}
-t.test(year1,year2)
+```{r permtest}
+ex_1_long_y12 = dplyr::filter(ex_1_long, variable == "year1" | variable == "year2")
+coin::oneway_test(value ~ variable, data = ex_1_long_y12, distribution = approximate(B = 10000))
 ```
 
-### *Neutral* scores matters
+While our effect size is "1"---more accurately, *Agree* to *Strongly Agree*---the *p*-value of the test is very large (basically 1), so we cannot say that this difference is "statistically significant". 
 
-Note on why having *Neutral* drags stuff to middle, biases mean on top of that. 
+We could also ask, "has the distribution shifted?", which would involve using the Mann-Whitney-Wilcoxon test:  
+
+```{r cmon_mann}
+wilcox.test(value ~ variable, data = ex_1_long_y12) 
+```
+
+The *p*-value is again non-significant, so the change between year 1 and year 2 can't be assumed to be a statistically significant change. Looking at the raw data or visuals, a decision-maker might be justified in wanting to act, but the analysis suggests that the difference is not statistically significant.  
+
+This leads us to the second problem with using *p*-values for determining whether a statistically-significant difference has occurred: sample size.  
+
+*p*-values are directly dependent on sample size. If your sample is large enough, you are guaranteed to have a low *p*-value. If your sample is small, whether or not you get a significant *p*-value depends on the scale of difference between the groups, i.e., the effect size.  
+
+For example, consider the following examples evaluating the number of people who answer *Agree* or *Strongly Agree* (the "favorable" score group) to a question:  
+
+| Example | Favorable | Total Answers | Effect size | *p*-value |
+| ---------- | --------:| --------:|:-------------------:|:---------:|
+| 1 | 15 | 20 | 75% | 0.04 |
+| 2 | 114 | 200 | 57% | 0.04 |
+| 3 | 1,046 | 2000 | 52% | 0.04 |
+| 4 | 1,001,450 | 2,000,000 | 50% | 0.04 | 
+
+With 15 of 20 people selecting a favorable value on the Likert scale, we have an effect size of 75%, which is an effect worth taking seriously. That value is also a statistically significant difference (*p* < 0.05), which supports the idea that the majority has a favorable opinion. With a couple of thousand responses (example 3), we again have a statistically significant difference, but the effect size is now only 52%, close enough to even-preference as to be *practically* the same. In medical terms, we might think of this as statistically significant but clinically irrelevant.  
+
+For these---and many other reasons outside the scope of these guidelines---statisticians are moving away from the use of *p*-values. In frequentist statistics, these are being replaced by the use of effect sizes and confidence intervals (CIs); these provide information on both on the precision of the estimated difference, as well as whether the difference can be considered statistically distinct. If the CI includes 0, the difference is not-significant. Regardless of the location of 0, the width of the CI tells you how precise your estimate is.    
+
+```{r mediantest}
+median_diff = two.boot(year1, year2, median, R=1000)
+cat(paste0("Difference in medians is ", abs(median_diff$t0), "."))
+boot.ci(median_diff, type = "perc") 
+```
+
+Here, we see that the effect size is a difference in medians of 1, but the confidence interval on that effect size goes from -1 to +1, i.e. is consistent with any score difference between *Neutral* and *Strongly Agree*. Since that CI includes 0, we can't say that the change from median of *Agree* to a median of *Strongly Agree* is statistically different, though again, sample size matters---one would probably like to try to intervene based on the one respondent who dropped down to 2 (*Disagree*) anyway. 
+
+### *Neutral* scores matter
+
+You might have noticed in some surveys that there is often no longer a "neutral" or "undecided" category included in the middle of the scale, e.g., what's usually a 3 on a 5-point Likert scale. Sometimes it is placed at the end of the scale, and sometimes it is eliminated entirely. The reason for this is that those terms can sometimes be interpreted in a variety of ways; for example, with a question such as "My pay is fair compared with other companies", a *Neutral* response could indicate "I'm neutral on this", "yes, I guess so", "I don't know", "it's neither fair nor unfair", "I don't want to answer", "I'm not sure what 'fair' means", and any number of ideas that don't necessarily indicate a true neutral opinion.
+
+When a question has a response option where this type of ambiguity exists, a mean value will tend toward the that option because of this bias, unless of course the mean is already at that value. However, when *Neutral* is marked as 3, and when valid responses tend towards 4s and 5s, these ambiguous responses will drag down the average (and vice versa for responses heavy with 1s and 2s). Of course, you shouldn't use means anyway, as we've seen above, but many reports do---so understanding this effect is important toward interpreting the results in a useful way.  
+
+Use of a median is somewhat resistant to this problem, though you still won't know whether the middle values are valid responses or accidents of interpretation.  
+
+When you see an "undecided" or "N/A" response placed at the end of the scale, it is usually (but not always!) a sign that the survey creator understands this problem.  
+
+Sometimes, of course, *Neutral* can be a completely reasonable and unambiguous response to a question. Context matters; while it's easiest for survey creators and scanning software to use the same scale for large numbers of questions, it is important that the analyst understands the extent to which *Neutral* and similar types of responses are a valid part of the measurement scale.  
+
+
+### Similarities: correlation between ordinal-scale variables
+
+Although traditionally many analysts used non-parametric correlation like Spearman's or Kendall's, polychoric correlation is the proper tool to assess similarities between Likert scale results. (Polyserial correlation is used when one variable is numeric and the other is ordinal.) 
+
+```{r polyc, fig.height=5}
+poly_c_both = polycor::polychor(both[,2], both[,3])
+
+ggplot(both, aes(both[,2], both[,3], group=EmployeeType, color=EmployeeType)) +
+  geom_jitter(na.rm=TRUE, width = 0.15, height = 0.15, alpha=0.6, size=3) +
+  xlab("My team works well together") + 
+  ylab("I have the tools I need to do my job") +
+  coord_equal()
+```
+
+The polychoric correlation coefficient between "My team works well together" and "I have the tools I need to do my job" is `r round(poly_c_both, 4)`. As expected, that suggests that there is no relationship between the responses to these two questions.  
+
 
 ### Other ordinal-scale visualizations
- 
-```{r likert_viz}
-set.seed(29)
-md = data.frame(Group = as.character("MD"), Response1 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.1,.1,.2,.5))), Response2 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.3,.3,.25,.15))))
-rn = data.frame(Group = as.character("RN"), Response1 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.1,.5,.2,.1))), Response2 = ordered(sample(1:5, 100, replace=T, prob=c(.1,.15,.45,.15,.15))))
- 
-both = rbind(md, rn)
- 
-make_NAs = sample(1:200, 15, replace=F)
-both$Response1[make_NAs] = NA
- 
-make_NAs2 = sample(1:200, 15, replace=F)
-both$Response2[make_NAs2] = NA
- 
-names(both) = c("EmployeeType", "My team works well together.", "I have the tools I need to do my job.")
- 
+
+*Figure 5. A Likert chart for two different questions (e.g., as within a single year's survey), with a count histogram to show number of responses and non-answers for each question.*  
+
+```{r likert_viz1, fig.width=9.5}
 ex_2_likert = likert(both[2:3])
     
 plot(ex_2_likert, include.histogram = TRUE)
- 
-both_likert_2 = likert(both[, c(2:3), drop=FALSE], grouping = both$EmployeeType)
-    
-plot(both_likert_2, include.histogram = TRUE)
-plot(ex_1_likert, type="density")
-plot(ex_1_likert, type="heat")
 ```
- 
-##### Parking lot
- 
-    likert_levels = c('Strongly Disagree', 'Disagree', 'Neither', 'Agree', 'Strongly Agree')
-    
-    test <- factor(sample(mylevels[1:5], 10, replace=TRUE))
-    
-    ex_1_l = lapply(ex_1[2:5], ordered, levels=likert_levels)
-    
+
+*Figure 6. An uncentered Likert chart for two different questions.*    
+
+```{r likert_viz2, fig.width=9.5}
+plot(ex_2_likert, centered = FALSE)
+```
+
+*Figure 7. A heatmap of the response frequency for two different questions. While the use of means and SDs is inappropriate, this particular example directly illustrates why those values don't capture the response patterns in the data.*  
+
+```{r likert_viz3, fig.width=8}
+plot(ex_2_likert, type = "heat")
+```
+
+
+```{r functions_edit_likert_plots}
+# FROM LIKERT GITHUB SITE
+
+# Not edited, needed for new barplot function
+label_wrap_mod <- function(value, width = 25) {
+  sapply(strwrap(as.character(value), width=width, simplify=FALSE), 
+         paste, collapse="\n")
+}
+
+abs_formatter <- function(x) {
+	return(abs(x))
+}
+
+
+# Edited to correct color sequence on favorable side
+likert.bar.plot = function (l, low.color = "#D8B365", high.color = "#5AB4AC", neutral.color = "grey90", 
+    neutral.color.ramp = "white", colors = NULL, plot.percent.low = TRUE, 
+    plot.percent.high = TRUE, plot.percent.neutral = TRUE, plot.percents = FALSE, 
+    text.size = 3, text.color = "black", centered = TRUE, center = (l$nlevels - 
+        1)/2 + 1, include.center = TRUE, ordered = TRUE, wrap = ifelse(is.null(l$grouping), 
+        50, 100), wrap.grouping = 50, legend = "Response", legend.position = "bottom", 
+    panel.arrange = "v", panel.strip.color = "#F0F0F0", group.order, 
+    ...) 
+{
+    if (center < 1.5 | center > (l$nlevels - 0.5) | center%%0.5 != 
+        0) {
+        stop(paste0("Invalid center. Values can range from 1.5 to ", 
+            (l$nlevels - 0.5), " in increments of 0.5"))
+    }
+    ymin <- 0
+    ymax <- 100
+    ybuffer <- 5
+    lowrange <- 1:floor(center - 0.5)
+    highrange <- ceiling(center + 0.5):l$nlevels
+    cols <- NULL
+    if (!is.null(colors) & length(colors) == l$nlevels) {
+        cols <- colors
+    }
+    else {
+        if (!is.null(colors) & length(colors) != l$nlevels) {
+            warning("The length of colors must be equal the number of levels.")
+        }
+        ramp <- colorRamp(c(low.color, neutral.color.ramp))
+        ramp <- rgb(ramp(seq(0, 1, length = length(lowrange) + 
+            1)), maxColorValue = 255)
+        bamp <- colorRamp(c(neutral.color.ramp, high.color))
+        bamp <- rgb(bamp(seq(0, 1, length = length(highrange) + 
+            1)), maxColorValue = 255)
+        cols <- NULL
+        if (center%%1 != 0) {
+            cols <- c(ramp[1:(length(ramp) - 1)], bamp[2:length(bamp)])
+        }
+        else {
+            cols <- c(ramp[1:(length(ramp) - 1)], neutral.color, 
+                bamp[2:length(bamp)])
+        }
+    }
+    lsum <- summary(l, center = center)
+    p <- NULL
+    if (!is.null(l$grouping)) {
+        lsum$Item <- label_wrap_mod(lsum$Item, width = wrap)
+        l$results$Item <- label_wrap_mod(l$results$Item, width = wrap)
+        lsum$Group <- label_wrap_mod(lsum$Group, width = wrap.grouping)
+        results <- l$results
+        results <- reshape2::melt(results, id = c("Group", "Item"))
+        results$variable <- factor(results$variable, ordered = TRUE)
+        if (TRUE | is.null(l$items)) {
+            results$Item <- factor(as.character(results$Item), 
+                levels = unique(results$Item), labels = label_wrap_mod(as.character(unique(results$Item)), 
+                  width = wrap), ordered = TRUE)
+        }
+        else {
+            results$Item <- factor(results$Item, levels = label_wrap_mod(names(l$items), 
+                width = wrap), ordered = TRUE)
+        }
+        ymin <- 0
+        if (centered) {
+            ymin <- -100
+            rows <- which(results$variable %in% names(l$results)[3:(length(lowrange) + 
+                2)])
+            results[rows, "value"] <- -1 * results[rows, "value"]
+            if (center%%1 == 0) {
+                rows.mid <- which(results$variable %in% names(l$results)[center + 
+                  2])
+                if (include.center) {
+                  tmp <- results[rows.mid, ]
+                  tmp$value <- tmp$value/2 * -1
+                  results[rows.mid, "value"] <- results[rows.mid, 
+                    "value"]/2
+                  results <- rbind(results, tmp)
+                }
+                else {
+                  results <- results[-rows.mid, ]
+                }
+            }
+            results.low <- results[results$value < 0, ]
+            results.high <- results[results$value > 0, ]
+            p <- ggplot(results, aes(y = value, x = Group, group = variable)) + 
+                geom_hline(yintercept = 0) + geom_bar(data = results.low[nrow(results.low):1, 
+                ], aes(fill = variable), stat = "identity") + 
+                geom_bar(data = results.high, aes(fill = variable, group=rev(variable)), # EDITED HERE
+                  stat = "identity")
+            names(cols) <- levels(results$variable)
+            p <- p + scale_fill_manual(legend, breaks = names(cols), 
+                values = cols, drop = FALSE)
+        }
+        else {
+            ymin <- 0
+            p <- ggplot(results, aes(y = value, x = Group, group = variable))
+            p <- p + geom_bar(stat = "identity", aes(fill = variable)) + 
+                scale_fill_manual(legend, values = cols, breaks = levels(results$variable), 
+                  labels = levels(results$variable), drop = FALSE)
+        }
+        if (plot.percent.low) {
+            p <- p + geom_text(data = lsum, y = ymin, aes(x = Group, 
+                label = paste0(round(low), "%"), group = Item), 
+                size = text.size, hjust = 1, color = text.color)
+        }
+        if (plot.percent.high) {
+            p <- p + geom_text(data = lsum, aes(x = Group, y = 100, 
+                label = paste0(round(high), "%"), group = Item), 
+                size = text.size, hjust = -0.2, color = text.color)
+        }
+        if (plot.percent.neutral & l$nlevels%%2 == 1 & include.center) {
+            if (centered) {
+                p <- p + geom_text(data = lsum, y = 0, aes(x = Group, 
+                  group = Item, label = paste0(round(neutral), 
+                    "%")), size = text.size, hjust = 0.5, color = text.color)
+            }
+            else {
+                lsum$y <- lsum$low + (lsum$neutral/2)
+                p <- p + geom_text(data = lsum, aes(x = Group, 
+                  y = y, group = Item, label = paste0(round(neutral), 
+                    "%")), size = text.size, hjust = 0.5, color = text.color)
+            }
+        }
+        if (FALSE & plot.percents) {
+            warning("plot.percents is not currenlty supported for grouped analysis.")
+        }
+        p <- p + coord_flip() + ylab("Percentage") + xlab("") + 
+            theme(axis.ticks = element_blank(), strip.background = element_rect(fill = panel.strip.color, 
+                color = panel.strip.color))
+        if (is.null(panel.arrange)) {
+            p <- p + facet_wrap(~Item)
+        }
+        else if (panel.arrange == "v") {
+            p <- p + facet_wrap(~Item, ncol = 1)
+        }
+        else if (panel.arrange == "h") {
+            p <- p + facet_wrap(~Item, nrow = 1)
+        }
+        if (!missing(group.order)) {
+            p <- p + scale_x_discrete(limits = rev(group.order), 
+                drop = FALSE)
+        }
+    }
+    else {
+        factor.mapping <- NULL
+        if (!is.null(l$factors)) {
+            factor.mapping <- l$results[, 1:2]
+            names(factor.mapping)[2] <- "Factor"
+            results <- reshape2::melt(l$results[, -2], id.vars = "Item")
+        }
+        else {
+            results <- reshape2::melt(l$results, id.vars = "Item")
+        }
+        if (ordered & is.null(results$factor)) {
+            order <- lsum[order(lsum$high), "Item"]
+            results$Item <- factor(results$Item, levels = order)
+        }
+        ymin <- 0
+        if (centered) {
+            ymin <- -100
+            rows <- which(results$variable %in% names(l$results)[2:(length(lowrange) + 
+                1)])
+            results[rows, "value"] <- -1 * results[rows, "value"]
+            if (center%%1 == 0) {
+                rows.mid <- which(results$variable %in% names(l$results)[center + 
+                  1])
+                if (include.center) {
+                  tmp <- results[rows.mid, ]
+                  tmp$value <- tmp$value/2 * -1
+                  results[rows.mid, "value"] <- results[rows.mid, 
+                    "value"]/2
+                  results <- rbind(results, tmp)
+                }
+                else {
+                  results <- results[-rows.mid, ]
+                }
+            }
+            if (!is.null(factor.mapping)) {
+                results$order <- 1:nrow(results)
+                results <- merge(results, factor.mapping, by = "Item", 
+                  all.x = TRUE)
+                results <- results[order(results$order), ]
+                results$order <- NULL
+            }
+            results.low <- results[results$value < 0, ]
+            results.high <- results[results$value > 0, ]
+            p <- ggplot(results, aes(y = value, x = Item, group = Item)) + 
+                geom_hline(yintercept = 0) + geom_bar(data = results.low[nrow(results.low):1, 
+                ], aes(fill = variable), stat = "identity") + 
+                geom_bar(data = results.high, aes(fill = variable, group=rev(variable)), # EDITED HERE
+                  stat = "identity")
+            names(cols) <- levels(results$variable)
+            p <- p + scale_fill_manual(legend, breaks = names(cols), 
+                values = cols, drop = FALSE)
+        }
+        else {
+            if (!is.null(factor.mapping)) {
+                results$order <- 1:nrow(results)
+                results <- merge(results, factor.mapping, by = "Item", 
+                  all.x = TRUE)
+                results <- results[order(results$order), ]
+                results$order <- NULL
+            }
+            p <- ggplot(results, aes(y = value, x = Item, group = Item))
+            p <- p + geom_bar(stat = "identity", aes(fill = variable))
+            p <- p + scale_fill_manual(legend, values = cols, 
+                breaks = levels(results$variable), labels = levels(results$variable), 
+                drop = FALSE)
+        }
+        if (plot.percent.low) {
+            p <- p + geom_text(data = lsum, y = ymin, aes(x = Item, 
+                label = paste0(round(low), "%")), size = text.size, 
+                hjust = 1, color = text.color)
+        }
+        if (plot.percent.high) {
+            p <- p + geom_text(data = lsum, y = 100, aes(x = Item, 
+                label = paste0(round(high), "%")), size = text.size, 
+                hjust = -0.2, color = text.color)
+        }
+        if (plot.percent.neutral & l$nlevels%%2 == 1 & include.center) {
+            if (centered) {
+                p <- p + geom_text(data = lsum, y = 0, aes(x = Item, 
+                  label = paste0(round(neutral), "%")), size = text.size, 
+                  hjust = 0.5, color = text.color)
+            }
+            else {
+                lsum$y <- lsum$low + (lsum$neutral/2)
+                p <- p + geom_text(data = lsum, aes(x = Item, 
+                  y = y, label = paste0(round(neutral), "%")), 
+                  size = text.size, hjust = 0.5, color = text.color)
+            }
+        }
+        if (plot.percents) {
+            lpercentpos <- ddply(results[results$value > 0, ], 
+                .(Item), transform, pos = cumsum(value) - 0.5 * 
+                  value)
+            p <- p + geom_text(data = lpercentpos, aes(x = Item, 
+                y = pos, label = paste0(round(value), "%")), 
+                size = text.size, color = text.color)
+            lpercentneg <- results[results$value < 0, ]
+            if (nrow(lpercentneg) > 0) {
+                lpercentneg <- lpercentneg[nrow(lpercentneg):1, 
+                  ]
+                lpercentneg$value <- abs(lpercentneg$value)
+                lpercentneg <- ddply(lpercentneg, .(Item), transform, 
+                  pos = cumsum(value) - 0.5 * value)
+                lpercentneg$pos <- lpercentneg$pos * -1
+                p <- p + geom_text(data = lpercentneg, aes(x = Item, 
+                  y = pos, label = paste0(round(abs(value)), 
+                    "%")), size = text.size, color = text.color)
+            }
+        }
+        p <- p + coord_flip() + ylab("Percentage") + xlab("") + 
+            theme(axis.ticks = element_blank())
+        if (!is.null(factor.mapping)) {
+        }
+        if (!missing(group.order)) {
+            p <- p + scale_x_discrete(limits = rev(group.order), 
+                labels = label_wrap_mod(rev(group.order), width = wrap), 
+                drop = FALSE)
+        }
+        else {
+            p <- p + scale_x_discrete(breaks = l$results$Item, 
+                labels = label_wrap_mod(l$results$Item, width = wrap), 
+                drop = FALSE)
+        }
+    }
+    p <- p + scale_y_continuous(labels = abs_formatter, limits = c(ymin - 
+        ybuffer, ymax + ybuffer))
+    p <- p + theme(legend.position = legend.position)
+    attr(p, "item.order") <- levels(results$Item)
+    class(p) <- c("likert.bar.plot", class(p))
+    return(p)
+}
+
+
+```
+
+*Figure 8. Subgroups can sometimes reveal patterns not seen in aggregate data. For example, compare the overall results for "My team works well together" in Figure 5 (above) with the responses from the subgroups of MDs and RNs (below).*    
+```{r likert_viz4, fig.width=8, fig.height=4}
+both_likert_2 = likert(both[, c(2:3), drop = FALSE], grouping = both$EmployeeType)
+
+# New ggplot 2.2 broke the grouping plots
+# plot(both_likert_2, include.histogram = TRUE)
+# Using edited function from above chunk
+likert.bar.plot(both_likert_2, include.histogram = TRUE)
+
+```
+
+
+*Figure 9. Density plots for the same data shown in Figure 8, above. While using a density plot on ordinal data is also statistically inappropriate, it can be a useful tool for an analyst. Bar histograms are difficult to overlay subgroups or different years for a direct comparsion, so must be separated into facets instead (e.g., Figure 1, above). Density plots are easier to overlay to show these comparisons, so while not appropriate for a report, they can be useful tools for an analyst during the exploration phase.*   
+
+```{r likert_viz5, fig.height=4}
+plot(both_likert_2, type = "density")
+
+## ggbeeswarm?
+```
+
+<hr>  
+
+
+### Appendix: Measurement Levels and Appropriate Summary Statistics {#Appendix}
+
+
+------------------------------------------------------------------------------------------
+Statistic /\               Categorical\   Ranked\     Discrete/Counts\   Continuous\
+Parameter                  *Nominal*      *Ordinal*   *Interval/Ratio*   *Interval/Ratio* 
+------------------------- -------------- ----------- ------------------ ------------------
+Data set size (n)\         Y\              Y\          Y\                  Y\ 
+Percent / Frequency\       Y\              Y\          Y\                  Y\ 
+Count or rate\             Y\              Y\          Y\                  Y\ 
+Categories (levels)\       Y\              Y\          Y\                  Y\ 
+Mode\                      Y\              Y\          Y\                  Y\ 
+Median\                    *No*\              Y\          Y\                  Y\ 
+Interquartile range\       *No*\              Y\          Y\                  Y\ 
+Median absolute deviation\ *No*\              Y\          Y\                  Y\ 
+Range\                     *No*\              Y\          Y\                  Y\ 
+Minimum/maximum value\     *No*\              Y\          Y\                  Y\ 
+Quantiles\                 *No*\              Y\          Y\                  Y\ 
+Mean (average)\            *No*\              *No*\          Y\                 Y\ 
+Standard deviation\        *No*\              *No*\          Y\*\               Y\*\ 
+Coefficient of variation\  *No*\              *No*\          Y\*\               Y\*\ 
+------------------------------------------------------------------------------------------
+<small>\* You must use the correct distribution (proper mean-variance relationship) to ensure you get the correct standard deviation; most software defaults to calculating the standard deviation for a normally-distributed sample, which could be incorrect for certain kinds of count, rate, or proportion data, for example.</small>  
+
+<br>  
+
+*End of file*  
