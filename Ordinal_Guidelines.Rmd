@@ -240,7 +240,7 @@ For example, consider the following examples evaluating the number of people who
 | ---------- | --------:| --------:|:-------------------:|:---------:|
 | 1 | 15 | 20 | 75% | 0.04 |
 | 2 | 114 | 200 | 57% | 0.04 |
-| 3 | 1,046 | 2000 | 52% | 0.04 |
+| 3 | 1,046 | 2,000 | 52% | 0.04 |
 | 4 | 1,001,450 | 2,000,000 | 50% | 0.04 | 
 
 With 15 of 20 people selecting a favorable value on the Likert scale, we have an effect size of 75%, which is an effect worth taking seriously. That value is also a statistically significant difference (*p* < 0.05), which supports the idea that the majority has a favorable opinion. With a couple of thousand responses (example 3), we again have a statistically significant difference, but the effect size is now only 52%, close enough to even-preference as to be *practically* the same. In medical terms, we might think of this as statistically significant but clinically irrelevant.  
@@ -412,7 +412,10 @@ likert.bar.plot = function (l, low.color = "#D8B365", high.color = "#5AB4AC", ne
                   stat = "identity")
             names(cols) <- levels(results$variable)
             p <- p + scale_fill_manual(legend, breaks = names(cols), 
-                values = cols, drop = FALSE)
+                values = cols, drop = FALSE) +
+                theme_bw() +
+                theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) #EDITED HERE
+                
         }
         else {
             ymin <- 0
@@ -528,7 +531,9 @@ likert.bar.plot = function (l, low.color = "#D8B365", high.color = "#5AB4AC", ne
             p <- p + geom_bar(stat = "identity", aes(fill = variable))
             p <- p + scale_fill_manual(legend, values = cols, 
                 breaks = levels(results$variable), labels = levels(results$variable), 
-                drop = FALSE)
+                drop = FALSE) +
+                theme(axis.ticks = element_blank(), strip.background = element_rect(fill = panel.strip.color, 
+                color = panel.strip.color))  #Editedhere
         }
         if (plot.percent.low) {
             p <- p + geom_text(data = lsum, y = ymin, aes(x = Item, 
@@ -599,7 +604,7 @@ likert.bar.plot = function (l, low.color = "#D8B365", high.color = "#5AB4AC", ne
 
 ```
 
-*Figure 8. Subgroups can sometimes reveal patterns not seen in aggregate data. For example, compare the overall results for "My team works well together" in Figure 5 (above) with the responses from the subgroups of MDs and RNs (below).*    
+*Figure 8. Subgroups can sometimes reveal patterns not seen in aggregate data. For example, compare the overall results for "My team works well together" in Figure 5 (above) with the responses from the subgroups of MDs and RNs (below, bottom panel).*    
 ```{r likert_viz4, fig.width=8, fig.height=4}
 both_likert_2 = likert(both[, c(2:3), drop = FALSE], grouping = both$EmployeeType)
 
