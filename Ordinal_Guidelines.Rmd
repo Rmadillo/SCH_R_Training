@@ -1,7 +1,7 @@
 ---
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
  
 <style>
@@ -48,17 +48,26 @@ library(boot)
 library(simpleboot)
 library(knitr)
 library(ggplot2)
-library(tidyr)
+library(dplyr)
+#library(tidyr)
 library(likert)
  
 # Data
 
 # Basic example data set
 person = c('A','B','C','D','E','F')
+
+# Original 
 year1 = c(5,4,4,4,4,4)
 year2 = c(2,5,5,5,5,4)
 year3 = c(3,5,5,5,5,3)
 year4 = c(1,5,5,5,5,5)
+
+# A more obvious version
+# year1 = c(3,3,3,3,3,3)
+# year2 = c(4,4,4,2,2,2)
+# year3 = c(5,4,3,3,2,1)
+# year4 = c(5,5,5,1,1,1)
  
 ex_1 = data.frame(person, year1, year2, year3, year4)
  
@@ -90,9 +99,9 @@ names(both) = c("EmployeeType", "My team works well together.", "I have the tool
  
 - When evaluated improperly---particularly through the use of averages---the results can be strikingly misleading. Obviously, misleading results could drive or promote action where none is warranted, and vice versa.  
  
-- In nearly all cases, not only is it mathematically wrong, **taking the average of a Likert-scale variable will *not* provide useful answers** to the questions end-users can use to make actionable decisions. Analysts should strive to avoid their use in any reporting solution or analytic product.  
+- In nearly all cases, not only is it mathematically wrong, **taking the average of a Likert-scale variable will *not* provide useful answers** to the questions end-users can use to make actionable decisions. In essence, the use of averages cannot account for the importance of capturing and understanding variabililty. Analysts should strive to avoid their use in any reporting solution or analytic product that uses ordinal-scale data.  
  
-- Better ways to represent ordinal-value results include histograms of the values themselves, the use of well-supported "top-box"-type proportions, and/or bar charts of percentage by score or score category (e.g., favorable/neutral/unfavorable). 
+- Better ways to represent ordinal-value results include histograms of the values themselves, the use of well-supported "top-box"-type proportions, and/or bar charts of percentage by score or score category (e.g., favorable/neutral/unfavorable).  
 
 - "Statistical significance" on changes or differences between response groups' medians or distribution shift  can be assessed through non-parametric frequentist tests (permutation, Mann-Whitney-Wilcoxon), Information Theory, or Bayesian analysis. *t*-tests should never be used on Likert scales because ordinal data does not meet the assumptions of a *t*-test. Also, when using frequentist tools, one must *also* account for multiple testing to reduce the chance of false positives.  
  
@@ -108,8 +117,8 @@ Take a simple example where a group of 6 people people take the same survey for 
  
 Taking the mean of these results gives you this:
  
-| year 1 | year 2 | year 3 | year 4 | 
-| ------ | ------ | ------ | ------ |
+| Year 1 | Year 2 | Year 3 | Year 4 | 
+|:------:|:------:|:------:|:------:|
 | `r mean(year1)` | `r mean(year2)` | `r mean(year3)` | `r mean(year4)` |
  
 So one might conclude that there is an improvement from year 1 to year 2, and no change year-over-year after year 2. 
@@ -117,7 +126,7 @@ So one might conclude that there is an improvement from year 1 to year 2, and no
 The values that created the above results are as follows:  
  
 ```{r ex_1_table}
-kable(ex_1)
+kable(ex_1, col.names = c("Individual", "Year 1", "Year 2", "Year 3", "Year 4"))
 ```
  
 You might already see how management decisions would be made differently based on whether one had just the means or had the complete data. 
@@ -200,11 +209,11 @@ ggplot(rse, aes(x = x, y = y)) +
  
 Many decision-makers want to know if a result is "statistically-significantly different" from, say, the same response from a previous time period, or between a couple of subgroups in the same response. Unfortunately, this is mostly useless, for two reasons. 
 
-First, acting as if Likert or other ordinal scales are continuous level data leads to many problems of interpretation (see the [Appendix](#Appendix) for a general overview of measurement scales and appropriate statistics). There has been controversy over this distinction for many decades; however, a great way to understand the conceptual problem is to realize that the mean of *Agree* and *Strongly Agree* is *not* Agree-And-A-Half---it just makes no sense. A subsequent argument might be that, no, it's not conceptually accurate, but it provides a sense for directional changes. However, such results still run into problems of interpretation: if you go from 4.16 to 4.33, have you gone from Agree.16 to Agree.33? What does such an "improvement" mean, in practical terms? All you can accurately say is that both values are most consistent with an *Agree* opinion. 
+First, acting as if Likert or other ordinal scales are continuous level data leads to many problems of interpretation (see the [Appendix](#Appendix) for a general overview of measurement scales and appropriate statistics). There has been controversy over this distinction for many decades; however, a great way to understand the conceptual problem is to realize that the mean of *Agree* and *Strongly Agree* is **not** *Agree-And-A-Half*---it just makes no sense. A subsequent argument might be that, no, it's not conceptually accurate, but it provides a sense for directional changes. However, such results still run into problems of interpretation: if you go from 4.16 to 4.33, have you gone from Agree.16 to Agree.33? What does such an "improvement" mean, in practical terms? All you can accurately say is that both values are most consistent with an *Agree* opinion. 
 
 Specifically in the medicine/healthcare context, [Kuzon et al.](https://www.ncbi.nlm.nih.gov/pubmed/8883724) state that the use of parametric statistics on ordinal data (such calculating a mean or using a *t*-test) is the first of "The seven deadly sins of statistical analysis".  
 
-One way around this is to use medians and test for differences in those statistics (with medians, the difference is best assessed via bootstrap or permutation testing) or to test whether the distribution has shifted (Mann-Whitney-Wilcoxon test). These options are the statistically-correct way to do it using traditional frequentist statistics. So, using the simple example above, we'd want to know whether the median is statistically different between year 1 (Median = `r median(year1)`) and year 2 (Median = `r median(year2)`). 
+One way around this is to use medians and test for differences in those statistics (with medians, the difference is best assessed via bootstrap or permutation testing), to test whether the distribution has shifted (Mann-Whitney-Wilcoxon test), or to use more advanced techniques such as multinomial or proportional-odds regression (see the [Advanced](#Advanced) section, below). These options are the statistically-correct way to do it using traditional frequentist statistics. So, using the simple example above, we'd want to know whether the median is statistically different between year 1 (Median = `r median(year1)`) and year 2 (Median = `r median(year2)`). 
  
 ```{r permtest}
 ex_1_long_y12 = dplyr::filter(ex_1_long, variable == "year1" | variable == "year2")
@@ -610,6 +619,121 @@ plot(both_likert_2, type = "density")
 ## ggbeeswarm?
 ```
 
+### Advanced analytics {#Advanced}
+
+*Figure . Chi-square test between Employee Type and responses to the "My team works well together" question.*  
+
+```{r chisq, fig.height=5}
+# Get rid of NAs
+both2 = na.omit(both)
+names(both2) = c("EmployeeType", "Teamwork", "Tools")
+both2$Teamwork = ordered(both2$Teamwork, levels = c("5", "4", "3", "2", "1"))
+
+# Make a table object for chisq stuff
+both2_tab = xtabs(~ both2$EmployeeType + both2$Teamwork)
+
+# Mosaic plot with Pearson residuals
+mosaicplot(both2_tab, shade = T, main="", xlab="Employee Type", ylab="My team works well together")
+
+# Chi-square
+chisq.test(both2_tab, simulate.p.value = T)
+
+# Resampling version of chi-square
+# coin::chisq_test(both2_tab)
+
+# Log-linear model instead of chi-square
+# logln_both = MASS::loglm(both2[,2] ~ both2[,1], both2_tab)
+# logln_both$params
+
+# Poisson glm
+# glm_both = glm(as.numeric(both2[,2]) ~ both2[,1], data=both2, family = poisson)
+# summary(glm_both)
+```
+
+*Figure . Multinomial logistic regression.*  
+
+```{r multnom}
+# Multinomial regression
+multnom_both = nnet::multinom(Teamwork ~ EmployeeType, data = both2)
+multnom_both
+exp(coef(multnom_both))
+exp(confint(multnom_both))
+
+# New data for prediction
+df_both = data.frame(EmployeeType = rep(c("MD", "RN"), each = 5),  Teamwork = rep(c(1:5), 2))
+
+# Get probabilities
+multnom_both_probs = cbind(df_both, predict(multnom_both, newdata = df_both, type = "probs", se = TRUE))
+
+# Clean up, ugh
+multnom_both_probs = multnom_both_probs[,-2]
+multnom_both_probs = unique(multnom_both_probs)
+
+# Make data frame for ggplot, probably should figure out tidyr
+multnom_both_probs_df = reshape2::melt(multnom_both_probs, id.vars = "EmployeeType", variable.name = "Teamwork", value.name = "probability")
+
+# Plot multinomial regression probs for Employee Type
+ggplot(multnom_both_probs_df, aes(x = Teamwork, y = probability, color = EmployeeType, group = EmployeeType)) +
+  geom_line() + 
+  geom_point() +
+  xlab("My team works well together")
+```
+
+*Figure . Proportional odds logistic regression.*  
+
+```{r prop_odds}
+# Data frame for proportional odds regression
+Teamwork_tab_long = both2[,1:2] %>%
+  group_by(EmployeeType, Teamwork) %>%
+  summarize(Count = n())
+
+# Proportional odds regression with polr
+polr_both = MASS::polr(Teamwork ~ EmployeeType, data = Teamwork_tab_long, weight = Count)
+polr_both
+exp(coef(polr_both))
+exp(confint(polr_both))
+
+# New data for prediction, same as multinom
+df_both = data.frame(EmployeeType = rep(c("MD", "RN"), each = 5),  Teamwork = rep(c(1:5), 2))
+
+# Get probabilities
+polr_both_probs = cbind(df_both, predict(polr_both, newdata = df_both, type = "probs", se = TRUE))
+
+# Clean up, ugh
+polr_both_probs = polr_both_probs[,-2]
+polr_both_probs = unique(polr_both_probs)
+
+# Make data frame for ggplot, probably should figure out tidyr
+polr_both_probs_df = reshape2::melt(polr_both_probs, id.vars = "EmployeeType", variable.name = "Teamwork", value.name = "probability")
+
+# Plot prop odds regression probs for Employee Type
+ggplot(polr_both_probs_df, aes(x = Teamwork, y = probability, color = EmployeeType, group = EmployeeType)) +
+  geom_line() + 
+  geom_point() +
+  xlab("My team works well together")
+
+### Test assumptions, not shown yet
+
+countsToCases = function(x, countcol = "Count") {
+    # Get the row indices to pull from x
+    idx = rep.int(seq_len(nrow(x)), x[[countcol]])
+    # Drop count column
+    x[[countcol]] = NULL
+    # Get the rows from x
+    x[idx, ]
+}
+
+# Make a data table
+Teamwork_tab_long$Teamwork_Group = as.numeric(Teamwork_tab_long$Teamwork) 
+Teamwork_tab_long$Teamwork = ordered(Teamwork_tab_long$Teamwork) 
+tab_df = data.frame(countsToCases(Teamwork_tab_long, countcol="Count"))
+
+# Need to better understand diffs between polr and clm
+# Coefs/thresholds are exactly the same, though
+fm1 = ordinal::clm(Teamwork ~ EmployeeType, data=tab_df)
+fm2 = ordinal::clm(Teamwork ~ EmployeeType, data=tab_df, threshold="equidistant")
+polr_assumptions = anova(fm1, fm2)
+```
 <hr>  
 
 
