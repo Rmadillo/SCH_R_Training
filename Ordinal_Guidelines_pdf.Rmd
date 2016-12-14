@@ -1,46 +1,10 @@
 ---
-output:
-  pdf_document: default
-  html_document: default
+output: pdf_document
 ---
  
-<style>
-  .col2 {
-    columns: 2 200px;         /* number of columns and width in pixels*/
-    -webkit-columns: 2 200px; /* chrome, safari */
-    -moz-columns: 2 200px;    /* firefox */
-  }
-  .col3 {
-    columns: 3 100px;
-    -webkit-columns: 3 100px;
-    -moz-columns: 3 100px;
-  }
-</style>
- 
-<center>
-![SCH Logo](http://www.seattlechildrens.org/uploadedImages/Siteroot_Resources/Global_Settings/logo_main_sch.gif) 
-<br>  
-<p style="color:#0090b4; font-family:Arial"><i><b>Analytics Guidelines Series</i></b></p>
-<br>
- 
-# Do not use means on Likert scale data
- 
-</center> 
- 
-<br>  
- 
-### Seattle Children's Hospital
- 
-**Dwight Barry, PhD**  
-*Enterprise Analytics*  
- 
-*`r format(Sys.Date(), "%d %B %Y")`*   
-   
-<hr>  
- 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment=NA, fig.height = 3, fig.align = "center")
- 
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "> ", fig.height = 3, fig.align = "center")
+
 # Packages
 library(grid)
 library(coin)
@@ -93,9 +57,25 @@ names(both) = c("EmployeeType", "My team works well together.", "I have the tool
 # likert_levels = c('Strongly Disagree', 'Disagree', 'Neither', 'Agree', 'Strongly Agree')
 ```
  
-<br>   
+```{r logo}
+# logo must be in same dir as Rmd
+knitr::include_graphics("scLOGO_smH_3col_rgb.png")
+```
 
-## Summary
+\begin{center} \fontsize{16}{36}\selectfont \textbf{Do not use means on Likert scale data} \end{center} 
+\  
+
+### Seattle Children's Hospital \newline \textit{Analytic Guidelines Series}
+ 
+**Dwight Barry, PhD**  
+*Enterprise Analytics*  
+ 
+*`r format(Sys.Date(), "%d %B %Y")`*   
+   
+\  
+
+
+# Summary
  
 - Likert and similar ordinal-level scales have a variety of uses, particularly within surveys such as Family Experience, Culture of Safety, and Employee Engagement. They also occur in clinical care, for example, in the use of pain scores.  
  
@@ -109,17 +89,16 @@ names(both) = c("EmployeeType", "My team works well together.", "I have the tool
  
 - A good way to remember not to use means on Likert scale data is to think: "The average of Good and Excellent is *not* Good-And-A-Half". 
 
-<br>   
-<br>   
+\newpage 
 
-## Discussion
+# Discussion
 
 *Note: all of the data in this document is fake, created using random number generators specifically to illustrate particular points.*  
 
-<br>   
-<br>   
+ 
+ 
 
-### A simple example 
+## A simple example 
  
 Take a simple example where a group of 6 people people take the same survey for 4 years, and the mean results for an important question, such as "my team works well together", are as follows: 
  
@@ -141,20 +120,22 @@ You might already see how management decisions would be made differently based o
  
 However, in the latter case, you risk reducing or eliminating anonymity, which is essential toward getting respondents to answer truthfully (not to mention being unethical). Further, poring over tables of answers for many people for long surveys makes that approach practically infeasible. Visualizing the results in ways that capture a more complete story provides an answer to both issues, as well as providing decision-makers with truly-actionable information.
 
-<br>   
-<br>   
+ 
+ 
 
-### Visualizing Likert-scale data
+## Visualizing Likert-scale data
 
-<br>   
+ 
 
-#### Histograms
+### Histograms
  
 Histograms of the actual score values are the best way to visualize Likert data---they have two real axes, showing counts by score value or category, so you can parse the visual and understand the results very quickly. Using the same data as above, one can instantly see that the "improvement" in year 2 was perhaps not an improvement after all; while most respondents appear to be satisfied above what they thought in year 1, one respondent may be at risk of leaving.        
 
+\newpage  
+
 *Figure 1. Histogram of example Likert scale data.*  
  
-```{r histos, fig.height=6}
+```{r histos, fig.height=4, fig.width=4}
 ggplot(ex_1_long, aes(value)) +
     geom_histogram(binwidth=1) +
     facet_wrap(~variable, ncol=1) +
@@ -162,9 +143,9 @@ ggplot(ex_1_long, aes(value)) +
     theme_bw()
 ```
  
-<br>  
 
-#### Likert charts
+
+### Likert charts
  
 The main disadvantage of histograms is space; Likert charts---which are in essence just stacked bar charts---are far more compact. The disadvantage is that it takes slightly longer for a user to parse them, but when faced with lots of questions or groupings, they tend to be the best option.  
 
@@ -172,28 +153,28 @@ There are two kinds of Likert charts---those that use a center line for a point 
 
 *Figure 2. Centered Likert chart.*  
  
-```{r ex_1_likert}
-ex_1[2:5] = lapply(ex_1[2:5], factor, levels=1:5)
+```{r ex_1_likert, fig.height = 2.5}
+ex_1[2:5] = lapply(ex_1[2:5], factor, levels = 1:5)
 ex_1_likert = likert(ex_1[2:5])
 plot(ex_1_likert, ordered = FALSE, group.order = names(ex_1[2:5]))
 ```
 
-<br>   
+ 
 
 *Figure 3. Uncentered Likert chart (aka percent bar chart).*  
 
-```{r ex_1_likert_percent}
+```{r ex_1_likert_percent, fig.height = 2.5}
 plot(ex_1_likert, ordered = FALSE, centered = FALSE, group.order=names(ex_1[2:5]))
 ```
 
-<br>   
+\  
 
 Neither Likert chart type does as good a job as the histogram at making the results immediately understandable, but again, histograms take more space, and busy decision makers often need to see the forest (all the questions) at the expense of some trees (each question). In this case, analysts might use the histograms to explore potentially important results themselves, and then use Likert charts in a report with some strategically-placed text highlighting important patterns they found with the histograms.  
 
-<br>  
-<br>  
 
-### How many respondents are enough?
+
+
+## How many respondents are enough?
  
 It's common to think: "We surveyed everyone in this department, therefore the results we see must be correct." However, how people responded to surveys depends on many factors---such as mood the date the survey is taken, recent events in life and in work, changes in organizational structure, and any number of other factors---and many internal surveys are given only once a year. Thus, survey results are really a *sample* of attitudes and opinions, subject to random events and natural fluctuations. 
  
@@ -201,9 +182,11 @@ Typical practice at SCH is to expose summary results for groups with at least 6 
 
 In this context, *stable* means that the data accurately represent true changes (or lack of change) in the question at hand. It's basically impossible to distinguish natural variation from real change when you have small numbers of respondents. As a result, the National Center for Health Statistics, for example, does not publish results with less than 20 distinct cases or responses. 
 
-The relative standard error (RSE) is the metric used to evaluate whether you have enough values for the results to be stable. The standard error is an estimate of the likely difference between the results and the true value (which in surveys, even of complete populations, can't be known exactly due to the reasons mentioned above). The *relative* standard error is the standard error expressed as a percent of the measure or number of responses, which is a constant function: $\frac{1}{\sqrt{responses}} * 100$.  
+The relative standard error (RSE) is the metric used to evaluate whether you have enough values for the results to be stable. The standard error is an estimate of the likely difference between the results and the true value (which in surveys, even of complete populations, can't be known exactly due to the reasons mentioned above). The *relative* standard error is the standard error expressed as a percent of the measure or number of responses, which is a constant function: $\frac{1}{\sqrt{responses}} * 100$. This function can be seen in the graph on the next page.    
 
 Generally, you want RSE values less than 20-25% to have some confidence that your results are stable.  
+
+\newpage  
 
 *Figure 4. The RSE-response count function. The RSE associated with the use of 6 responses is marked with dark red, and the response count associated with an RSE of 25% is marked with dark blue.*  
 
@@ -226,25 +209,34 @@ ggplot(rse, aes(x = x, y = y)) +
 
 ```
 
-<br>  
-<br>   
+
  
-### Is there a significant difference?  
+ 
+## Is there a significant difference?  
  
 Many decision-makers want to know if a result is "statistically-significantly different" from, say, the same response from a previous time period, or between a couple of subgroups in the same response. Unfortunately, this is mostly useless, for two reasons. 
 
-First, acting as if Likert or other ordinal scales are continuous level data leads to many problems of interpretation (see the [Appendix](#Appendix) for a general overview of measurement scales and appropriate statistics). There has been controversy over this distinction for many decades; however, a great way to understand the conceptual problem is to realize that the mean of *Agree* and *Strongly Agree* is **not** *Agree-And-A-Half*---it just makes no sense. A subsequent argument might be that, no, it's not conceptually accurate, but it provides a sense for directional changes. However, such results still run into problems of interpretation: if you go from 4.16 to 4.33, have you gone from Agree.16 to Agree.33? What does such an "improvement" mean, in practical terms? All you can accurately say is that both values are most consistent with an *Agree* opinion. 
+First, acting as if Likert or other ordinal scales are continuous level data leads to many problems of interpretation (see the [Appendix](#Appendix) for a general overview of measurement scales and appropriate statistics). There has been controversy over this distinction for many decades; however, a great way to understand the conceptual problem is to realize that the mean of *Agree* and *Strongly Agree* is **not** *Agree-And-A-Half*---it just makes no sense.  
 
-Specifically in the medicine/healthcare context, [Kuzon et al.](https://www.ncbi.nlm.nih.gov/pubmed/8883724) state that the use of parametric statistics on ordinal data (such calculating a mean or using a *t*-test) is the first of "The seven deadly sins of statistical analysis".  
+A subsequent argument might be that, no, it's not conceptually accurate, but it provides a sense for directional changes. However, such results still run into problems of interpretation: if you go from 4.16 to 4.33, have you gone from Agree.16 to Agree.33? What does such an "improvement" mean, in practical terms? All you can accurately say is that both values are most consistent with an *Agree* opinion. 
+
+Specifically in the medicine/healthcare context, [Kuzon et al.](https://www.ncbi.nlm.nih.gov/pubmed/8883724) state that the use of parametric statistics on ordinal data (such calculating a mean or using a *t*-test) is the first of "The seven deadly sins of statistical analysis". Don't "sin" and you don't have to worry about whether your results are illegitmate.    
 
 One way around this is to use medians and test for differences in those statistics (with medians, the difference is best assessed via bootstrap or permutation testing), to test whether the distribution has shifted (Mann-Whitney-Wilcoxon test), or to use more advanced techniques such as multinomial or proportional-odds regression (see the [Advanced](#Advanced) section, below). These options are the more statistically-correct ways to do it, as opposed a *t*-test.  
 
 So, using the simple example above, we'd want to know whether the median is statistically different between year 1 (Median = `r median(year1)`) and year 2 (Median = `r median(year2)`). Running a [permutation test](https://en.wikipedia.org/wiki/Resampling_(statistics)#Permutation_tests) gives us the following results:   
- 
+
+\newpage   
+
 ```{r permtest}
+# Subset to years 1 and 2
 ex_1_long_y12 = dplyr::filter(ex_1_long, variable == "year1" | variable == "year2")
-coin::oneway_test(value ~ variable, data = ex_1_long_y12, distribution = approximate(B = 10000))
+
+# Permutation test
+coin::oneway_test(value ~ variable, data = ex_1_long_y12, distribution = "exact")
 ```
+
+\ 
 
 While our effect size is "1"---more accurately, *Agree* to *Strongly Agree*---the *p*-value of the test is very large (basically 1), so we cannot say that this difference is "statistically significant". 
 
@@ -253,6 +245,8 @@ We could also ask, "has the distribution shifted?", which would involve using th
 ```{r cmon_mann}
 wilcox.test(value ~ variable, data = ex_1_long_y12) 
 ```
+
+\ 
 
 The *p*-value is again non-significant, so the change between year 1 and year 2 can't be assumed to be a statistically significant change. Looking at the raw data or visuals, a decision-maker might be justified in wanting to act, but the analysis suggests that the difference is not statistically significant.  
 
@@ -273,18 +267,22 @@ With 15 of 20 people selecting a favorable value on the Likert scale, we have an
 
 For these---and many other reasons outside the scope of these guidelines---statisticians are moving away from the use of *p*-values. In frequentist statistics, these are being replaced by the use of effect sizes and confidence intervals (CIs); these provide information on both on the precision of the estimated difference, as well as whether the difference can be considered statistically distinct. If the CI includes 0, the difference is not-significant. Regardless of the location of 0, the width of the CI tells you how precise your estimate is.    
 
+\newpage 
+
 ```{r mediantest}
 median_diff = two.boot(year1, year2, median, R=1000)
 cat(paste0("Difference in medians is ", abs(median_diff$t0), "."))
 boot.ci(median_diff, type = "perc") 
 ```
 
+\  
+
 Here, we see that the effect size is a difference in medians of 1, but the confidence interval on that effect size goes from -1 to +1, i.e. is consistent with any score difference between *Neutral* and *Strongly Agree*. Since that CI includes 0, we can't say that the change from median of *Agree* to a median of *Strongly Agree* is statistically different, though again, sample size matters---one would probably like to try to intervene based on the one respondent who dropped down to 2 (*Disagree*) anyway. 
 
-<br>  
-<br>  
 
-### *Neutral* scores matter
+
+
+## *Neutral* scores matter
 
 You might have noticed in some surveys that there is often no longer a "neutral" or "undecided" category included in the middle of the scale, e.g., what's usually a 3 on a 5-point Likert scale. Sometimes it is placed at the end of the scale, and sometimes it is eliminated entirely. The reason for this is that those terms can sometimes be interpreted in a variety of ways; for example, with a question such as "My pay is fair compared with other companies", a *Neutral* response could indicate "I'm neutral on this", "yes, I guess so", "I don't know", "it's neither fair nor unfair", "I don't want to answer", "I'm not sure what 'fair' means", and any number of ideas that don't necessarily indicate a true neutral opinion.
 
@@ -296,10 +294,10 @@ When you see an "undecided" or "N/A" response placed at the end of the scale, it
 
 Sometimes, of course, *Neutral* can be a completely reasonable and unambiguous response to a question. Context matters; while it's easiest for survey creators and scanning software to use the same scale for large numbers of questions, it is important that the analyst understands the extent to which *Neutral* and similar types of responses are a valid part of the measurement scale.  
 
-<br>  
-<br>  
 
-### Similarities: correlation between ordinal-scale variables
+
+
+## Similarities: correlation between ordinal-scale variables
 
 Although traditionally many analysts used non-parametric correlation like Spearman's or Kendall's, polychoric correlation is the proper tool to assess similarities between Likert scale results. (Polyserial correlation is used when one variable is numeric and the other is ordinal.) 
 
@@ -315,16 +313,15 @@ ggplot(both, aes(both[,2], both[,3], group=EmployeeType, color=EmployeeType)) +
   coord_equal()
 ```
 
-<br>  
+\  
 
 The polychoric correlation coefficient between "My team works well together" and "I have the tools I need to do my job" is `r round(poly_c_both, 4)`. As expected, that suggests that there is no relationship between the responses to these two questions.  
 
-<br>  
-<br>  
+\newpage  
 
-### Other ordinal-scale visualizations
+## Other ordinal-scale visualizations
 
-<br>  
+
 
 *Figure 6. A Likert chart for two different questions (e.g., as within a single year's survey), with a count histogram to show number of responses and non-answers for each question.*  
 
@@ -334,7 +331,7 @@ ex_2_likert = likert(both[2:3])
 plot(ex_2_likert, include.histogram = TRUE)
 ```
 
-<br>  
+\  
 
 *Figure 7. An uncentered Likert chart for two different questions.*    
 
@@ -342,13 +339,15 @@ plot(ex_2_likert, include.histogram = TRUE)
 plot(ex_2_likert, centered = FALSE)
 ```
 
-<br>  
+\  
 
 *Figure 8. A heatmap of the response frequency for two different questions. While the use of means and SDs is inappropriate, this particular example directly illustrates why those values don't capture the response patterns in the data.*  
 
 ```{r likert_viz3, fig.width=8}
 plot(ex_2_likert, type = "heat")
 ```
+
+\ 
 
 ```{r functions_edit_likert_plots}
 # FROM LIKERT GITHUB SITE
@@ -646,9 +645,9 @@ likert.bar.plot = function (l, low.color = "#D8B365", high.color = "#5AB4AC", ne
 
 ```
 
-<br>  
 
 *Figure 9. Subgroups can sometimes reveal patterns not seen in aggregate data. For example, compare the overall results for "My team works well together" in Figure 5 (above) with the responses from the subgroups of MDs and RNs (below, bottom panel).*    
+
 ```{r likert_viz4, fig.width=8, fig.height=4}
 both_likert_2 = likert(both[, c(2:3), drop = FALSE], grouping = both$EmployeeType)
 
@@ -659,8 +658,7 @@ likert.bar.plot(both_likert_2, include.histogram = TRUE)
 
 ```
 
-<br>  
-
+\  
 
 *Figure 10. Density plots for the same data shown in Figure 8, above. While using a density plot on ordinal data is also statistically inappropriate, it can be a useful tool for an analyst. Bar histograms are difficult to overlay subgroups or different years for a direct comparsion, so must be separated into facets instead (e.g., Figure 1, above). Density plots are easier to overlay to show these comparisons, so while not appropriate for a report, they can be useful tools for an analyst during the exploration phase.*   
 
@@ -670,10 +668,7 @@ plot(both_likert_2, type = "density")
 ## ggbeeswarm?
 ```
 
-<br>  
-<br>  
-
-### Advanced analytics {#Advanced}
+## Advanced analytics {#Advanced}
 
 ```{r chisq}
 # Get rid of NAs
@@ -683,9 +678,6 @@ both2$Teamwork = ordered(both2$Teamwork, levels = c("5", "4", "3", "2", "1"))
 
 # Make a table object for chisq stuff
 both2_tab = xtabs(~ both2$EmployeeType + both2$Teamwork)
-
-# Chi-square
-both2_chisq = chisq.test(both2_tab, simulate.p.value = T)
 
 # Resampling version of chi-square
 # coin::chisq_test(both2_tab)
@@ -699,19 +691,21 @@ both2_chisq = chisq.test(both2_tab, simulate.p.value = T)
 # summary(glm_both)
 ```
 
-<br>  
+*Figure 11. Chi-square test and mosaic plot between Employee Type and responses to the "My team works well together" question.*   
 
-*Figure 11. Chi-square test ($\chi^2$ = `r both2_chisq$statistic`, *p* = `r both2_chisq$p.value) and mosaic plot between Employee Type and responses to the "My team works well together" question.*  
-
-
-```{r mosaicplot, fig.height=5}
+```{r mosaicplot, fig.height=4.5, fig.width=4.5}
 # Mosaic plot with Pearson residuals
 mosaicplot(both2_tab, shade = T, main="", xlab="Employee Type", ylab="My team works well together")
 ```
 
-<br>  
+```{r chisq_results}
+# Chi-square
+chisq.test(both2_tab, simulate.p.value = T)
+```
 
-*Figure 12. Multinomial regression between Employee Type and responses to the "My team works well together" question.*  
+\ 
+
+*Figure 12. Multinomial regression between Employee Type and responses to the "My team works well together" question, with information-theoretic table for multi-model inference.*  
 
 ```{r multnom}
 # Multinomial regression
@@ -721,11 +715,9 @@ multnom_both_1 = nnet::multinom(Teamwork ~ 1, data = both2, trace = FALSE)
 # multnom_both
 # exp(coef(multnom_both))
 # exp(confint(multnom_both))
-
 ```
 
-
-```{r multnom_plot}
+```{r multnom_plot, fig.height=2.5}
 
 # New data for prediction
 df_both = data.frame(EmployeeType = rep(c("MD", "RN"), each = 5),  Teamwork = rep(c(1:5), 2))
@@ -756,11 +748,11 @@ mod_set = list()
 kable(aictab(mod_set, modnames = c("Employee Type", "Null Model")))
 ```
 
-<br>  
 
-*Figure 13. Proportional odds logistic regression between Employee Type and responses to the "My team works well together" question.*  
 
-```{r prop_odds}
+*Figure 13. Proportional odds logistic regression between Employee Type and responses to the "My team works well together" question, with information-theoretic table for multi-model inference.*  
+
+```{r prop_odds, fig.height = 2.5}
 # Data frame for proportional odds regression
 Teamwork_tab_long = both2[,1:2] %>%
   group_by(EmployeeType, Teamwork) %>%
@@ -832,13 +824,12 @@ kable(aictab(mod_set, modnames = c("Employee Type", "Null Model")))
 
 ```
 
-<br>  
-<hr>  
 
+\newpage  
 
-### Appendix: Measurement Levels and Appropriate Summary Statistics {#Appendix}
+# Appendix: Measurement Levels & Appropriate Summary Statistics {#Appendix}
 
-<br>  
+\  
 
 ------------------------------------------------------------------------------------------
 Statistic /\               Categorical\   Ranked\     Discrete/Counts\   Continuous\
@@ -861,6 +852,3 @@ Coefficient of variation\  *No*\              *No*\          Y\*\               
 ------------------------------------------------------------------------------------------
 <small>\* You must use the correct distribution (proper mean-variance relationship) to ensure you get the correct standard deviation; most software defaults to calculating the standard deviation for a normally-distributed sample, which could be incorrect for certain kinds of count, rate, or proportion data, for example.</small>  
 
-<br>  
-
-*End of file*  
