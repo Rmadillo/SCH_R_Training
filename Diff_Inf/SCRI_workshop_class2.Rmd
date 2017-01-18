@@ -1,0 +1,87 @@
+---
+title: "Philosophies of Inference"
+author: "Dwight Barry"
+date: ""
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Everyone is aware of *p*-values as a center piece in applied statistics. What much fewer are aware of is that this apporoach is but one possibility for deriving information from data.  
+
+The three major philosophies of statistical inference are frequentism, information-theoretic, and Bayesianism. All use the [idea of the likelihood principle](http://stats.stackexchange.com/a/2649) as their central concept [but proceed in different directions from there](
+http://labstats.net/articles/overview.html):
+
+![](http://labstats.net/figs/stat_schools.png)
+
+<br>  
+<hr>  
+***The fundamental difference in use***  
+[*modified slightly from the Win-Vector Blog*](http://www.win-vector.com/blog/2013/05/bayesian-and-frequentist-approaches-ask-the-right-question/)  
+
+*From your family doctor’s viewpoint, a frequentist or information-theoretic approach answers the question "If I prescribe drug X to all my hypertensive patients, will their blood pressure improve, on average?"* 
+
+*That isn’t the question (hopefully) that your doctor actually asks, though possibly your insurance company does.* 
+
+*Your doctor should be asking "If I prescribe drug X to this patient, the one sitting in my examination room, will the patient's blood pressure improve?" There is only one patient, so there is no such thing as "on average." ... And that’s a Bayesian question.*  
+<hr>  
+<br>  
+
+None of these approaches provide the "ultimate" statistics tool. In fact, [*there is still no way to quantify "evidence" in the same way we might quantify "temperature."](https://www.sciencenews.org/article/medicine-needs-sensible-way-measure-weight-evidence?mode=magazine&context=3117)* (See [*Vieland 2014*]( http://www.karger.com/Article/Pdf/367599) for more technical details of this idea applied to genetics.) While frequentism has dominated applied statistics for nearly a century, the ready availability of fast computers and new insights in mathematics has given the other tools equal standing in terms of usefulness to applied problems. 
+
+**Ultimately, which approach is best depends on what you want to know.**  
+
+In this workshop, we'll explore the problem of having different types of statistical inference in the presence of small sample size, where "differences in inferences" literally lead to differences in clinical interpretation for decision making.  
+
+## The problem and research question
+
+### Brain surgery: harder than rocket science
+
+
+
+### The study: 
+
+Cognitive outcome after focal surgical resection was retrospectively reviewed for 15 cognitively intact children operated on between 2 and 6 years of age for lesion-related, early-onset epilepsy.  
+
+Wechsler intelligence tests were conducted prior to and after surgery to explore differences in intelligence between short versus long duration of seizures prior to surgical resection.  
+
+**The paper:** Shurtleff et al. 2015. Impact of epilepsy surgery on development of preschool children: identification of a cohort likely to benefit from early intervention. *Journal of Neurosurgery: Pediatrics* 16(4): 383-392. http://dx.doi.org/10.3171/2015.3.PEDS14359
+
+### The data and EDA
+
+
+
+### Frequentist philosophies: Fisher vs N-P
+
+### t-test result
+
+### Philosophical publication bias
+
+### p-hacking the results
+
+
+## Bayesian and IT philosophy and results, comparison (Dwight)
+
+### Bayesian philosophy
+
+### Bayesian results
+
+### Information Theory philosophy
+
+### IT results
+
+### Comparison of philosophies’ questions and results to the problem
+
+### Different philosophies answer different questions; which to use based on question and experiment
+
+
+***  
+####  <span style="color:blue">__Exercise R*[number, from 1]*:__</span> 
+
+In class exercise  
+
+***
