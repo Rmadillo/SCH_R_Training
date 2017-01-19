@@ -12,7 +12,7 @@
 
 # 1
 ##### install packages first #####
-# install.packages(c("tidyverse", "qicharts", "gridExtra", "ggExtra", "forecast", "trend", "readxl", "devtools", "RODBC"), dependencies=TRUE)
+# install.packages(c("tidyverse", "qicharts", "gridExtra", "ggExtra", "forecast", "trend", "readxl", "devtools", "RODBC", "lubridate", "htmlwidgets", "DT"), dependencies=TRUE)
 
 # 2
 #### load R packages into working environment ####
