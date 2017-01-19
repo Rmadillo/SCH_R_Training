@@ -1,24 +1,48 @@
+##################################################
 # SPC with R workshop
 # Seattle Children's Hospital
+# Dwight Barry, Enterprise Analytics
 # January 19, 2017
+##################################################
 
-# Exercise 1: SPC chart in a line of code
 
 
-#### load R packages ####
+##################################################
+##### Set up ####
+
+# 1
+##### install packages first #####
+# install.packages(c("tidyverse", "qicharts", "gridExtra", "ggExtra", "forecast", "trend", "readxl", "devtools", "RODBC"), dependencies=TRUE)
+
+# 2
+#### load R packages into working environment ####
 library(tidyverse)
 library(qicharts)
 
+# 3
+#### Load data ####
+# Download data from sharepoint first
+# http://sps/Committees/SCHAF/SCHAF%20Wiki/SPC%20Training.aspx
+# Then you can load into R from your own C drive Downloads folder
+# IMPORTANT! REPLACE USERID WITH your USERID
+pu = read_csv("C:\\Users\\USERID\\Downloads\\pressure_ulcers_fake.csv")
 
-#### Load data from shared folder ####
 # Note use of extra \ to "escape" the \ in the path 
-pu = read_csv("\\\\childrens\\files\\SCEAPublic\\SPC_Training\\data\\pressure_ulcers_fake.csv")
+
+## If you downloaded to your O drive, you can use this instead
+## pu = read_csv("\\\\childrens\\files\\Users01\\USERID\\Downloads\\pressure_ulcers_fake.csv")
+
+
+
+##################################################
+# Exercise 1: SPC chart in a line of code
 
 
 #### Create a u-chart in 1 line of code ####
 qic(pressure_ulcers, patient_days, week, multiply = 1000, data = pu, chart = "u")
 
 
+####################
 #### Practice 1 ####
 # 1. Using the following code, create a nicer u-chart by specifying titles and labels.
 
@@ -33,43 +57,38 @@ qic(y = pressure_ulcers,
     xlab = "Week")
 
 
-# SPC with R workshop
-# Seattle Children's Hospital
-# January 19, 2017
+
+##################################################
 
 # Exercise 2: Run charts and qic features
-
-#### load R packages ####
-# library(tidyverse)
-# library(qicharts)
-
-#### Load data from shared folder ####
-# Note use of extra \ to "escape" the \ in the path 
-# pu = read_csv("\\\\childrens\\files\\SCEAPublic\\SPC_Training\\data\\pressure_ulcers_fake.csv")
 
 #### Run charts with qic ####
 
 # Run chart of count of pressure ulcers
+# Using the qic function of the qicharts package
 qic(pressure_ulcers, data = pu)
 
 # Run chart with non-random signal "tests" on chart
 qic(pressure_ulcers, data = pu, runvals = TRUE)
 
-# Shift signal manual calculation
+## Shift signal manual calculation
+# Obtain non-median n
 n = sum(ifelse(pu$pressure_ulcers != median(pu$pressure_ulcers), 1, 0))
+# Maximum points/side for non-randomness
 round(log2(n) + 3)
 
-# Crossings signal manual calculation
+## Crossings signal manual calculation
+# Minimum number of median line crossings
 qbinom(0.05, n - 1, 0.5)
 
 # Run chart where first 12 weeks are baseline
+# Median line is "frozen" on the first 12 weeks
 qic(pressure_ulcers, data = pu, runvals = TRUE, freeze = 12)
 
 # Calculate different centerline for before/after
 qic(pressure_ulcers, data = pu, runvals = TRUE, breaks = 12)
 
-
-#### Labels and annotations
+#### Labels and annotations for qic charts ####
 
 # Labels
 qic(pressure_ulcers, 
@@ -78,7 +97,7 @@ qic(pressure_ulcers,
     breaks = 12,
     x = week,
     main = 'Weekly Pressure Ulcers', 
-    sub = 'Show No Mercy Hospital, Aromatherapy Unit',
+    sub = '"Show No Mercy" Hospital, Aromatherapy Unit',
     ylab = 'Count',
     xlab = 'Week of')
 
@@ -114,8 +133,9 @@ qic(pressure_ulcers,
     ylab = 'Count',
     xlab = 'Week of',
     notes = notes)
-	
-	
+
+
+####################	
 #### Practice 2 #### 
 # Open a new R script in the Source window (top left)
 # 1. Load the CLABSI data from the workshop data directory
@@ -123,50 +143,47 @@ qic(pressure_ulcers,
 # 3. Put a break and annotation at October 2010 (annotation wording is your choice)
 
 
-# SPC with R workshop
-# Seattle Children's Hospital
-# January 19, 2017
+
+##################################################	
 
 # Exercise 3: EDA and control chart assumptions
 
-#### load R packages ####
-# library(tidyverse)
-# library(qicharts)
 
-#### Load data from shared folder ####
-# Note use of extra \ to "escape" the \ in the path 
-# pu = read_csv("\\\\childrens\\files\\SCEAPublic\\SPC_Training\\data\\pressure_ulcers_fake.csv")
+#### Load CLABSI data ####
+# IMPORTANT! REPLACE USERID WITH your USERID
+CLABSI = read_csv("C:\\Users\\USERID\\Downloads\\CLABSI.csv")
 
-CLABSI = read_csv("\\\\childrens\\files\\SCEAPublic\\SPC_Training\\data\\CLABSI.csv")
-
+# Convert Month to a Date scale
 CLABSI$Month = as.Date(CLABSI$Month)
 
+
 #### Time series EDA ####
+
+# Development version of forecast *may* be needed
+# devtools::install_github("robjhyndman/forecast")
 
 # Load other libraries
 library(gridExtra)
 library(ggExtra)
 library(forecast)
 
-
 ## Basic EDA
 
 # Line plot with loess smoother for assessing trend
 p1 = ggplot(CLABSI, aes(x = Month, y = Rate)) + 
-  geom_smooth() + 
-  geom_line() 
+    geom_smooth() + 
+    geom_line() 
 
 # Histogram with density overlay
 p2 = ggplot(CLABSI, aes(Rate)) + 
-  geom_histogram(aes(y = ..density..), binwidth = 0.5, color="gray70") +
-  geom_density(color="blue")
+    geom_histogram(aes(y = ..density..), binwidth = 0.5, color="gray70") +
+    geom_density(color="blue")
 
 # Put both into the same plot
 grid.arrange(p1, p2, widths = c(0.65, 0.35))
 
 # Another way to view series, trend, and ditribution together
 ggMarginal(p1, margins="y", type = "histogram", binwidth=0.5)
-
 
 ## Time series EDA
 
@@ -179,14 +196,15 @@ ggseasonplot(CLABSI_ts)
 # Monthplot
 ggmonthplot(CLABSI_ts)
 
-# Accumulation plot
+## Accumulation plot
 
 # Create a cumulative sums by year data frame
 CLABSI_accum = 
     CLABSI %>% # Take the CLABSI data
     group_by(FY) %>% # Group by fiscal year
     arrange(Month) %>% # Sort by month
-    mutate(cuml_linedays = cumsum(CL_Days), cuml_infections = cumsum(CLABSI)) # Calculate cumulative sums
+    mutate(cuml_linedays = cumsum(CL_Days), 
+           cuml_infections = cumsum(CLABSI))
 
 # Plot accumultation curves of CLABSIs by CL days by FY
 ggplot(CLABSI_accum, aes(x = cuml_linedays, y = cuml_infections, group = as.factor(FY))) +
@@ -197,7 +215,6 @@ ggplot(CLABSI_accum, aes(x = cuml_linedays, y = cuml_infections, group = as.fact
     scale_colour_brewer(type = "div", palette = "Spectral") +
     guides(color = guide_legend(title = "Fiscal\nYear")) +
     ggtitle("CLABSIs vesus Central Line Days by Year")
-
 
 #### Test control chart assumptions ####
 
@@ -215,6 +232,7 @@ autoplot(acf(CLABSI_ts))
 lag.plot(CLABSI_ts, lags = 12, do.lines = FALSE)
 
 
+####################
 #### Practice 3 #### 
 # 1. Use this command to subset the CLABSI data from October 2010 on into a new dataframe
 
@@ -225,26 +243,11 @@ CLABSI_2010 = filter(CLABSI, Month >= "2010-10-01")
 # 4. Are the assumptions satisfied now or not?
 
 
-# SPC with R workshop
-# Seattle Children's Hospital
-# January 19, 2017
+
+##################################################
 
 # Exercise 4: Control charts
 
-#### load R packages ####
-# library(tidyverse)
-# library(qicharts)
-# library(gridExtra)
-# library(ggExtra)
-# library(forecast)
-
-#### Load data from shared folder ####
-# Note use of extra \ to "escape" the \ in the path 
-# pu = read_csv("\\\\childrens\\files\\SCEAPublic\\SPC_Training\\data\\pressure_ulcers_fake.csv")
-
-# CLABSI = read_csv("\\\\childrens\\files\\SCEAPublic\\SPC_Training\\data\\CLABSI.csv")
-
-# CLABSI$Month = as.Date(CLABSI$Month)
 
 #### Control Charts ####
 
@@ -261,7 +264,7 @@ qic(y = pressure_ulcers,
     xlab = "Week")
 
 # p chart on same fake pressure ulcer data, 
-# proportion of patients with a pressure ulcer
+# Proportion of patients with a pressure ulcer
 qic(y = patients_with_pu,
     n = discharges,
     x = week,
@@ -275,11 +278,10 @@ qic(y = patients_with_pu,
 # Just change the chart option to make different types of control charts
 # use ?qic to see the help file
 
-
 #### Rare event data control charts ####
 
 # Read in fake CAUTI data from a tab-delimited file
-CAUTI = read_tsv("\\\\childrens\\files\\SCEAPublic\\SPC_Training\\data\\CAUTI_fake.txt")
+CAUTI = read_tsv("C:\\Users\\USERID\\Downloads\\CAUTI_fake.txt")
 
 # File saved from Excel w/ Excel's stupid date format, so convert to ISO date
 CAUTI$Event_Date = as.Date(CAUTI$Event_Date, format="%m/%d/%Y")
@@ -287,26 +289,74 @@ CAUTI$Event_Date = as.Date(CAUTI$Event_Date, format="%m/%d/%Y")
 # Long cut to view data in source window
 View(CAUTI)
 
-# g chart for number of catheter days between CAUTIs
+# g chart for number of catheter days between CAUTIs (discrete units)
 qic(y = Caths_since_last_event, 
     data = CAUTI,
     chart = 'g',
-    main  = 'Catheter days between CAUTIs, FY16 (G chart)',
+    main  = 'Catheter days between CAUTIs, FY16 (g chart)',
     ylab  = 'Catheter days',
     xlab  = 'CAUTI Patient Number')
 
-# t chart for days between CAUTIs
+# t chart for days between CAUTIs (continuous units)
 qic(y = Days_since_last_event,
     data = CAUTI,
     chart = 't',
-    main  = 'Days between CAUTIs, FY16 (T chart)',
+    main  = 'Days between CAUTIs, FY16 (t chart)',
     ylab  = 'Days',
     xlab  = 'CAUTI number')
 
-#### Loading data from an Excel file ####
-CAUTI_from_xlsx = readxl::read_excel("\\\\childrens\\files\\SCEAPublic\\SPC_Training\\data\\fake_data.xlsx", sheet = "cauti", col_types = c("date", "numeric", "numeric"), na = "NA")
 
-
+####################
 #### Practice 4 #### 
 # 1. Create a u-chart from the CLABSI_2010 data.
 # 2. Create a u-chart from all the CLABSI data with a break at October 1, 2010. 
+
+
+
+
+####################
+# If there's time 
+
+
+#### Loading data from an Excel file ####
+# IMPORTANT! REPLACE USERID WITH your USERID
+CAUTI_from_xlsx = readxl::read_excel("C:\\Users\\USERID\\Downloads\\fake_data.xlsx", sheet = "cauti", col_types = c("date", "numeric", "numeric"), na = "NA")
+                                     
+                                     
+#### Loading data from the EDW ####
+
+# Load ODBC package
+library(RODBC)
+                                     
+# Set credentials to access EDW
+# IMPORTANT! REPLACE (Dwight's) USERID WITH (your) USERID
+EDW = odbcConnect(dsn="EDWNetezza", 
+    uid="dbarr1",   
+    pwd=.rs.askForPassword("Enter password"))
+                                     
+# Standard SQL query for acquiring hours worked by clinical staff
+# (Data provenance is unkown, this could be a test dataset for EDW)
+ED_hours_query = "
+    SELECT BEGIN_DATE, 
+    sum(TOTAL_HOURS)
+                                     
+    FROM PRD_DISTRIBUTION..ED_UC_CONSOLIDATED_SCHEDULE
+                                     
+    where SHIFT_CATEGORY like 'Clinical%'
+                                     
+    group by BEGIN_DATE
+    order by BEGIN_DATE"
+
+# Pull data from EDW using the query
+ED_hours = sqlQuery(EDW, ED_hours_query, stringsAsFactors=F, believeNRows=FALSE)
+                                     
+# Close ODBC connection
+close(EDW)
+                                     
+# Make an inital run chart of hours by day for clinical ED/UC staff
+qic(y = SUM, 
+    x = BEGIN_DATE,
+    data = ED_hours, 
+    runvals = TRUE)
+
+#### End of File ####
