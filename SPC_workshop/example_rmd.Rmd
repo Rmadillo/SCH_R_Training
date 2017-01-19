@@ -22,7 +22,9 @@ library(forecast)
 
 
 #### Load data from shared folder ####
-CLABSI = read_csv("\\\\childrens\\files\\SCEAPublic\\SPC_Training\\data\\CLABSI.csv")
+
+#### !!! USE YOUR USERID !!! ####
+CLABSI = read_csv("C:\\Users\\dbarr1\\Downloads\\CLABSI.csv")
 
 CLABSI$Month = as.Date(CLABSI$Month)
 
@@ -122,6 +124,20 @@ qic(y = CLABSI,
     ylab = "CLABSI Rate",
     xlab = "Month")
 ```
+
+<br>  
+
+### Oh, here's some data in an interactive table
+
+```{r interactivetable}
+# Add a character variable for month
+CLABSI$MoY = lubridate::month(CLABSI$Month, label = TRUE, abbr = FALSE)
+
+# Make an interactive table inside the html
+DT::datatable(CLABSI, filter = "top")
+```
+
+<hr>  
 
 - This is the end.  
 
