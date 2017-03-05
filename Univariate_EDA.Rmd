@@ -1,0 +1,900 @@
+---
+title: "Statistical Literacy for Biologists: Week 1, Part 2"
+author: "Dwight Barry"
+date: "8 March 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.height = 3, fig.align = "center")
+
+# Packages used: forcats, GGally, htmlTable, knitr, psych, tableone, tidyverse 
+
+# Not in ratchet system library
+# install.packages("tableone", dependencies = TRUE)
+```
+
+# Statistical Literacy: A Highly Abbreviated Overview 
+
+Statistical methods and tools have exploded in the last decade with the increase in computing power and the development of languages like R and Python. But the practice of statistics in teaching and research has not kept the same pace, so many practitioners in healthcare research aren't aware of many of these advances. 
+
+This workshop series is meant to help you get a better sense of statistical best practices for modern research, while getting hands-on, practical experience with R.
+
+## What's different from my *Stats 101* class?
+
+Perhaps one of the most jarring changes for many is the movement away from traditional tests like ANOVA, *t*-tests, and $\chi^2$ to generalized linear models (GLMs) as the focus of practice. Actually, those traditional tests are simply special cases of GLMs, and still have their uses given the right circumstances. For example, mathematically, a *t*-test is simply a regression with a categorical predictor, which is in turn just one type of regression among many.
+
+Traditionally, one might have used a flowchart that started with a type of question---do you need to know about similarities or differences? Are the data counts in categories or continuous variables? [And so on](http://accesspharmacy.mhmedical.com/data/books/wani/wani_c012f001.gif). Probably what no one ever told you in *Stats 101* is that those tests are actually united by a firm theoretical foundation, and also that the tests you were taught work great in industrial or tightly controlled settings but don't often work very well when on the boundaries of scientific research.  
+
+The beauty of revising your focus is that these flowcharts become irrelevant: *all* of those tests are just regressions, so you can spend more time thinking about the relationship between your data and a regression model, knowing that we can probably find an appropriate type of model for even novel scientific problems. 
+
+So throw away your flowcharts and start thinking about analyzing data with this mental model:
+
+\  
+\  
+
+```{r fig1, echo = FALSE, fig.align = "center"}
+knitr::include_graphics("fouranalysisgroups.png")
+```
+
+
+## Measurement scales and summary statistics
+
+Summary statistics, such as the mean, median, IQR, or standard deviation, can provide a useful window into a data set for both researchers and readers. But statistical tools, including summary statistics, are predicated on the type of data you have; some statistics just don't work with some types of data.[^1] 
+
+[^1]: The most egregious (and common) failure is the use of averages (and standard deviations) on ordinal scale variables, such as Likert scales. We won't cover those in this course, but you can get an overview of better approaches in the mildly-titled e-book, [*Do not use averages on Likert scale data*](https://bookdown.org/Rmadillo/likert/).  
+
+Further, the types of statistical models you use to analyze your data depend on the measurement scales of the data you are exploring. So any analysis effort must start with being clear on measurement scales.   
+
+------------------------------------------------------------------------------------------
+Statistic /\               Categorical\   Ranked\     Discrete/Counts\   Continuous\
+Parameter                  *Nominal*      *Ordinal*   *Interval/Ratio*   *Interval/Ratio* 
+------------------------- -------------- ----------- ------------------ ------------------
+Data set size (n)\         Y\              Y\          Y\                  Y\ 
+Percent / frequency\       Y\              Y\          Y\                  Y\ 
+Count or rate\             Y\              Y\          Y\                  Y\ 
+Categories (levels)\       Y\              Y\          Y\                  Y\ 
+Mode\                      Y\              Y\          Y\                  Y\ 
+Median\                    *No*\              Y\          Y\                  Y\ 
+Interquartile range\       *No*\              Y\          Y\                  Y\ 
+Median absolute deviation\ *No*\              Y\          Y\                  Y\ 
+Range\                     *No*\              Y\          Y\                  Y\ 
+Minimum/maximum value\     *No*\              Y\          Y\                  Y\ 
+Quantiles\                 *No*\              Y\          Y\                  Y\ 
+Mean (average)\            *No*\              *No*\          Y\                 Y\ 
+Standard deviation\        *No*\              *No*\          Y\*\               Y\*\ 
+Coefficient of variation\  *No*\              *No*\          Y\*\               Y\*\ 
+------------------------------------------------------------------------------------------
+\footnotesize \* You must use the correct distribution (proper mean-variance relationship) to ensure you get the correct standard deviation; most software defaults to calculating the standard deviation for a normally-distributed sample, which could be incorrect for certain kinds of count, rate, or proportion data, for example.   
+
+\normalsize  
+\  
+
+What makes this a little trickier than you might think is that the same variable can be measured in many different ways. Take age for example: [it could be continuous, a discrete count, ordinal, categorical, even binary](http://www.theanalysisfactor.com/level-of-measurement-not-obvious/).  
+
+So, consider the values you have in the data, the context in which those values were gathered, and the purpose of the analysis when deciding which summary statistics to report or which analytic tools to use.  
+
+### An aside on assignment
+
+In R, you can use `<-` or `=` for assignment in nearly every important case. Many R style guides (and hardcore R users) say you should always use `<-`. The reason for `<-` goes back to the 1960s; basically, R was created from S, which was in turn built from APL, which used a keyboard with that symbol on it. Back in the early 2000s, R finally said "ok, let's throw a bone to those losers who use, um, I guess every other programming language" and made `=` an assignment operator.[^2] 
+
+[^2]: More fun from the history of R can be found on the [Ironholds blog](https://ironholds.org/projects/rbitrary/#why-do-we-use---for-assignment).
+
+Which should you use? If you're on a team, especially one building software in R, you should mutually decide on a convention or style guide and stick to it. If you're a solo operator or really just interested in getting R to do stuff for you (i.e., the stats stuff), you can use whatever you want.
+
+\newpage  
+
+# Univariate Exploratory Data Analysis (EDA)
+
+The foundation of all analyses are the individual variables. So understanding each of them, by themselves, is the best place to start any analytics work.  
+
+Let's pull in some data from the web to start. 
+
+The 2003 Annual Meeting of the Statistical Society of Canada explored a [case study](https://ssc.ca/en/case-studies-2003-annual-meeting) aimed at predicting systolic blood pressure from [a variety of physiological and genetic variables](https://ssc.ca/en/case-studies-2003-annual-meeting#data). We'll use the physiological variables to illustrate a variety of exploratory data analysis tools.      
+
+As we saw above, even things as seemingly straightforward as age can be assessed in a variety of ways that influence both the statistical tools you should use as well as the results you obtain. For the purposes of this workshop, we will take the variables measurement scales *as given or implied*, i.e., we will treat `age` as continuous, `income` as categorical, and so on.  
+
+```{r dataload, cache = TRUE}
+# Load the data
+sbp = read.csv("https://ssc.ca/sites/ssc/files/archive/documents/case_studies/2003/documents/datafile.dat", header = T)
+
+# Reduce data to the 18 physiological variable columns
+sbp = sbp[ , 1:18]
+
+# We'll convert the numeric factors to actual factors
+sbp[ , c(2:5, 9:12, 14:18)] = data.frame(apply(sbp[ , c(2:5, 9:12, 14:18)], 2, as.factor))
+
+# Let's look at the structure of this data
+str(sbp)
+```
+
+## Visualizing the distribution of variables
+
+Always, *always*, ***always*** start with the visuals.  
+
+We'll use the `base` and `ggplot2` libraries to visualize our data, focusing on the `weight` and `exercise` variables.  
+
+```{r}
+library(ggplot2)
+```
+
+### `base` graphics 
+
+#### Continuous distributions
+
+You should always start with a histogram to understand the distribution of your data. The quick-and-dirty way is using the `hist` function from the `base` package. Remember, you can access individual columns in a data frame with the `$` operator.    
+
+```{r fig.height = 3.5}
+hist(sbp$weight)
+```
+
+Ugly, but easy. Ditto with density histograms:  
+
+```{r fig.height = 3.5}
+plot(density(sbp$weight))
+```
+
+Why use density histograms? Well, because they're basically "more objective" histograms. The impression of the distribution can be modified substantially by changing the width of the bars, but the density histogram will maintain the same shape.  
+
+\newpage  
+
+For example,  
+
+```{r fig.width = 5, fig.height = 2.75, fig.align = "center"}
+hist(sbp$weight, freq = F)
+hist(sbp$weight, freq = F, breaks = 5)
+hist(sbp$weight, freq = F, breaks = 20)
+```
+
+\newpage  
+
+These definitely look different. But adding the density trace shows that they're from the same distribution:  
+
+```{r fig.width = 5, fig.height = 2.75, fig.align = "center"}
+hist(sbp$weight, freq = F, xlim = c(50, 275), ylim = c(0, 0.012))
+lines(density(sbp$weight), col = "red")
+
+hist(sbp$weight, freq = F, breaks = 5, xlim = c(50, 275), ylim = c(0, 0.012))
+lines(density(sbp$weight), col = "red")
+
+hist(sbp$weight, freq = F, breaks = 20, xlim = c(50, 275), ylim = c(0, 0.012))
+lines(density(sbp$weight), col = "red")
+```
+
+\newpage  
+
+In case you're curious, [here's how it works](http://www.rsc.org/images/data-distributions-kernel-density-technical-brief-4_tcm18-214836.pdf):  
+
+```{r echo = FALSE}
+knitr::include_graphics("how_density_works.png")
+```
+
+Another `base` package quick visualization for the distribution of continuous data is the empirical cumulative distribution function (`ecdf`), which plots the values of the distribution against the percentiles (median and IQR lines added in red):  
+
+```{r fig.height = 4}
+plot(ecdf(sbp$weight))
+abline(v = quantile(sbp$weight, probs = c(0.25, 0.5, 0.75)), col = "red")
+```
+
+#### Categorical distributions
+
+The `barplot` function provides the quick-and-dirty way to visualize categorical distributions:  
+
+```{r fig.width = 5}
+barplot(table(sbp$exercise))
+```
+
+### `ggplot2` graphics  
+
+It's worth having the above `base` functions in your toolbox simply because they are quick to type out during initial exploration. But you probably want to use `ggplot2` for most anything requiring more than a cursory glance.  
+
+Why? Let's start with the end: a multi-panel data viz summary.  
+
+```{r cache = TRUE, fig.height = 4.75, fig.width = 4.75}
+# We'll use the GGally package to create a "master EDA overview"
+library(GGally)
+
+# ggpairs is slow, so we'll only use a subset of data
+ggpairs(data = sbp, columns = c(1:6))
+```
+
+\  
+
+We won't parse the information in this graph this week. For now, we'll just tweak it a little to color the values by another categorical variable, whether they were in the treatment or control group, so you can see some of the possibilities.  
+
+```{r cache = TRUE, fig.height = 6}
+ggpairs(data = sbp, columns = c(1:6), mapping = aes(color = trt, alpha = 0.5))
+```
+
+
+The power of `ggplot2` comes from its immense ecosystem of add-ons and customization options, as well as its seamless integration with other key R packages (e.g., `dplyr`, `tidyr`, `forcats`, etc.). This, of course, can come at the cost of complication, but we think the learning curve is worth it: you can get publication quality graphs that you'd simply be unable to create in other tools.  
+
+We'll now create the same graphs as above using `ggplot2`. 
+
+Note the small and large changes in the code as we progress through these examples. They are there on purpose, to introduce different options and ideas for customizing plots. Like most things R, it will take practice and use in real projects to instill familiarity with `ggplot2`. But these examples can help serve as a leap-off point for your own work.  
+
+\newpage  
+
+#### Continuous distributions
+
+*Histogram*  
+
+```{r}
+# Histogram
+ggplot(sbp, aes(x = weight)) +
+  geom_histogram()
+```
+
+*Density histogram*  
+
+```{r}
+# Density
+ggplot(sbp, aes(x = weight)) +
+  geom_density()
+```
+
+*Combination histogram*  
+
+```{r}
+# Histogram and density, with a custom bin width and some color/fill options
+ggplot(sbp, aes(x = weight)) +
+  geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 10) +
+  geom_density(color = "blue", fill = "blue", alpha = 0.2)
+```
+
+*Combination histogram, cleaned up a little*  
+
+```{r}
+# Histogram and density, with a few color and fill options, and a plain theme
+# and the actual density value is meaningless, so we'll remove it
+ggplot(sbp, aes(x = weight)) +
+  geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 10) +
+  geom_density(color = "transparent", fill = "blue", alpha = 0.3) +
+  theme_bw() + # note: you must use theme options after theme type
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+```
+
+
+`ggplot2` also has built-in stats functions, so you can create an overlay of what a normal distribution would look like using `stat_function`:  
+
+```{r}
+# Same plot as above, with the stat_function added for a normal curve
+ggplot(sbp, aes(x = weight)) +
+  geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 10) +
+  geom_density(color = "transparent", fill = "blue", alpha = 0.3) +
+  stat_function(fun = dnorm, color = "red",
+    args = list(mean = mean(sbp$weight), sd = sd(sbp$weight))) + 
+  theme_bw() + 
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+```
+
+
+Another stats function in `ggplot2` helps you create an ecdf plot (with `stat_ecdf`, of course!):  
+
+```{r fig.height = 4}
+# Create a separate data frame for the quantiles to plot them
+weight_quantiles = data.frame(x = quantile(sbp$weight, probs = c(0.25, 0.5, 0.75)))
+
+# ecdf plot
+ggplot(sbp, aes(x = weight)) +
+  stat_ecdf() +
+  geom_vline(data = weight_quantiles, aes(xintercept = x), color = "red")
+```
+
+
+#### Categorical distributions
+
+The basic `ggplot2` function for the distribution of categorical variables is `geom_bar`:   
+
+```{r fig.width = 4}
+# Barplot
+ggplot(sbp, aes(x = exercise)) +
+  geom_bar()
+```
+
+\  
+
+We can turn it (or any other ggplot) sideways with `coord_flip()`:  
+
+```{r fig.width = 4, fig.height = 2.5}
+# Barplot
+ggplot(sbp, aes(x = exercise)) +
+  geom_bar() +
+  coord_flip()
+```
+
+\  
+
+Let's say we want it ordered by count, from top to bottom, and we wanted to have labels instead of numbers for the `exercise` variable.  
+
+```{r fig.width = 4, fig.height = 2.5}
+# Keep the original data, create new ordered factor with names of race
+sbp$Exercise = ordered(ifelse(sbp$exercise == 1, "Low",
+                        ifelse(sbp$exercise == 2, "Medium", "High")),
+                        levels = c("Low", "Medium", "High"))
+
+# We need to load the forcats library (helps with categorical variables) first
+library(forcats)
+
+# Barplot with values ordered by count, from top
+# fct_infreq orders by frequency
+# fct_rev reverses the order so most frequent is on top
+ggplot(sbp, aes(x = fct_rev(fct_infreq(Exercise)))) +
+  geom_bar() +
+  coord_flip() +
+  xlab("Exercise Category") # we flipped the graph but ggplot uses original aes
+```
+
+\  
+
+Some prefer a dot or "lollipop" graph to bars:  
+
+*Dot graph*  
+
+```{r fig.width = 4, fig.height = 2.5}
+ggplot(sbp, aes(x = fct_rev(fct_infreq(Exercise)), y = ..count..)) +
+  geom_point(stat = "count", size = 5) + 
+  coord_flip() +
+  ylim(0, 200) +
+  xlab("Exercise Category") +
+  ylab("Count") 
+```
+
+*"Lollipop" graph*  
+
+```{r fig.width = 4, fig.height = 2.5}
+ggplot(sbp, aes(x = fct_rev(fct_infreq(Exercise)), y = ..count..)) +
+  geom_bar(stat = "count", width = 0.02) +
+  geom_point(stat = "count", size = 4, color = "steelblue") + 
+  coord_flip() +
+  ylim(0, 200) +
+  xlab("Exercise Category") +
+  ylab("Count")
+```
+
+\  
+
+We can save a publication-ready/hi-res plot with `ggsave`, which saves the current plot. Save any ggplot saved in the environment by specifying its name in the `plot` option, e.g.:
+
+```{r}
+lolli_plot = ggplot(sbp, aes(x = fct_rev(fct_infreq(Exercise)), y = ..count..)) +
+  geom_bar(stat = "count", width = 0.02) +
+  geom_point(stat = "count", size = 4, color = "steelblue") + 
+  coord_flip() +
+  ylim(0, 200) +
+  xlab("Exercise Category") +
+  ylab("Count") + 
+  theme_bw()
+
+# This will appear in your current working directory; use getwd() if needed
+ggsave(filename = "lolliplot.png", plot = lolli_plot, dpi = 600, width = 4.5, 
+       height = 2.5, units = "in")
+```
+
+*** 
+
+####  <span style="color:blue">__Exercise R1:__</span>
+ 
+1. Create a histogram/density plot of the `sbp` variable (systolic blood pressure), using a custom color fill for density (try #A30134).  
+2. Create a bar plot of the `salt` variable, ordered with the highest value closest to the x-axis.
+ 
+***
+
+\newpage
+
+## Summary statistics in R
+
+The simplest way to get basic summary stats in R is to use the `summary` function. 
+
+```{r}
+summary(sbp)
+```
+
+You get counts for categorical variables, and the [5-number summary](https://en.wikipedia.org/wiki/Five-number_summary) plus the arithmetic mean for numeric variables.  
+
+You can use `quantile` to obtain the quantiles of your choice in the `probs` option.  
+
+```{r}
+quantile(sbp$age, probs = c(0.025, 0.20, 0.50, 0.80, 0.975))
+```
+
+The `ecdf` function allows you to go the other way and find out what quantile a certain number is at---assign it to an object and call the object with the value you want to see the quantile for:   
+
+```{r}
+what_quantile = ecdf(sbp$age)
+what_quantile(26)
+```
+
+
+You can use the `table` function to get counts for categorical variables; pre-pending `prop.table` gives you percentages.  
+
+```{r}
+table(sbp$Exercise)
+prop.table(table(sbp$Exercise))
+```
+
+Wrapping a table in the `addmargins` function gives you a sum as well:  
+
+```{r}
+addmargins(table(sbp$Exercise))
+```
+
+### Summary stats with the `psych` package
+
+The `psych` package has a beautiful collection of functions for a more extensive collection of summary statistics and effect sizes, which we'll see in upcoming workshops. Here, we'll use its version of `summary`, which is called `describe`. 
+
+```{r}
+# Load psych package
+library(psych)
+```
+
+`describe` only works on numeric variables, and will *treat your categorical variables as numeric* if you try to use it on those variables. It does provide an \* on those variables, but for clarity's sake, use the `is.numeric` function with `sapply` to alleviate this potential problem.  
+
+```{r}
+# Not run: 
+# describe(sbp)
+
+# Summary stats for numeric variables only
+describe(sbp[ , sapply(sbp, is.numeric)])
+
+# Make it pretty in Rmd if you'd like with kable, e.g., 
+# knitr::kable(round(describe(sbp[ , sapply(sbp, is.numeric)]), 1))
+```
+
+We don't often need the exact value of the mode in continuous data, but it sometimes can be a useful value to show in plots. We can get the value of maximum density with the `which.max` function, which can be used alone or in a plot.  
+
+```{r}
+# Calculate density and place into a data frame
+weight_dens = data.frame(weight = density(sbp$weight)$x, 
+                         density = density(sbp$weight)$y)
+
+# Obtain the weight value at which density is maximized
+weight_dens[which.max(weight_dens[, 2]), ]
+
+# Plot that as a line in a combined histogram + density plot
+ggplot(sbp, aes(x = weight)) +
+  geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 10) +
+  geom_density(color = "transparent", fill = "blue", alpha = 0.3) +
+  geom_vline(aes(xintercept = weight_dens[which.max(weight_dens[, 2]), 1]), 
+             color = "orange") + 
+  theme_bw() + 
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+```
+
+*** 
+
+####  <span style="color:blue">__Exercise R2:__</span>
+ 
+1. Create a table of counts for the `race` variable that includes a sum value.  
+2. Use the `describe` function to obtain summary stats for the `sbp` variable only.  
+3. Plot the mean, median, and mode as vertical lines of different colors on a histogram + density ggplot for the `sbp` variable.  
+
+*Extra credit:* replace `describe` with `multi.hist` (also from the `psych` package) in the code chunk that introduces the `psych` package above, and see what happens.  
+
+***
+
+\newpage
+
+# Homework: Summary Stats, Data Viz, and the (insidious) *Table 1*
+
+## Homework  
+
+1. Use either a data set of your choice (perhaps something you're working on now) or data on neurosurgery outcomes [available on GitHub](https://raw.githubusercontent.com/Rmadillo/SCH_R_Training/master/Diff_Inf/Shurtleffetal2015_episurg_data.csv)[^3] to obtain summary stats and a visual of the distribution of at least *one numeric* and *one categorical* variable.  
+2. (*optional*) Work through the *Extra Credit* section below and create a simple *Table 1* summary from your own data or from the neurosurgery data linked in question 1.  
+3. (*optional*) Create an "advanced" *Table 1* from your own data or from the neurosurgery data linked in question 1, using `Phase` as the strata. [Email to Dwight](mailto:dwight.barry@seattlechildrens.org?Subject=TableOne) if you want to have it shared next class for participant feedback (either anonymously or not, your choice).    
+
+[^3]: Data: https://raw.githubusercontent.com/Rmadillo/SCH_R_Training/master/Diff_Inf/Shurtleffetal2015_episurg_data.csv; metadata: https://github.com/Rmadillo/SCH_R_Training/blob/master/Diff_Inf/README.md. 
+
+\  
+
+***  
+
+## Extra Credit: *Table 1* 
+
+The `tableone` package has a simple interface for creating the typical *Table 1* that you find in many medical papers.  
+
+```{r}
+# Load tableone package
+library(tableone)
+
+# Create a new factor to label the treatment groups
+sbp$treatment_group = as.factor(ifelse(sbp$trt == 0, "Control", "Treatment"))
+
+# Create a variable list for Table 1
+table_vars = c("age", "height", "weight", "bmi", "gender", "married",
+               "smoke", "exercise", "stress")
+
+# Specify the categorical variables
+fct_vars = c("gender", "married", "smoke", "exercise", "stress")
+
+# Create the table, without using NHST, stratified by treatment group
+table_1_lies = CreateTableOne(table_vars, sbp, fct_vars,
+                strata = "treatment_group", test = FALSE)
+
+# Put the table into an object so it will show up in Rmd files
+table_1_lies_object = print(table_1_lies, showAllLevels = TRUE, quote = FALSE,
+                noSpaces = TRUE, printToggle = FALSE)
+
+# When using html for Rmd output, a more LaTeX-like table can be made with `htmlTable`  
+# htmlTable::htmlTable(table_1_lies_object, css.cell = "padding-left: 2em; 
+#            padding-right: 2em;", align = c('c', 'r', 'r'))
+
+# Print the table
+knitr::kable(table_1_lies_object, align = 'crr')
+```
+
+Awesome, right? That saves a few hours of cut, paste, and Word table formatting!  
+
+Yes, it does, but be careful: you don't want to lie with *Table 1*.  
+
+## So why can *Table 1* be a problem?
+
+In the olde days, creating graphs was extremely difficult, but calculating summary stats was fairly trivial. The thinking went that although the reader didn't have the full set of information that a distribution plot would provide, they at least had something to go on that would help them mentally visualize the approximate (normal) distribution. Further, it was compact: a bunch of summary information gathered into a single space.  
+
+But then some researchers started generating *p*-values on each variable, not understanding how they might be violating the principles of good stats use ([experiment-wise error rate](https://xkcd.com/882/), for one).  
+
+Others used it for data that was clearly non-normal, rendering the standard deviation values pointless, at best, and misleading, at worst.   
+
+Why?  
+
+For example, imagine having a small mean and using a normal distribution on a variable that cannot go below zero, such as negative age. Using the normal (Gaussian) mean and standard deviation can imply that impossible values are actually part of your data. We'll pretend we have some data on the counts of tumors on a model organism, and see what a traditional *Table 1* would imply.    
+
+```{r}
+# Create some fake count data with mean = 1
+set.seed(54)
+tumor_count = data.frame(x = rpois(30, 1))
+
+# Calculate mean
+mean(tumor_count$x)
+
+# Calculate normal distribution standard deviation
+sd(tumor_count$x)
+```
+
+So given only a mean of `r round(mean(tumor_count$x), 1)` and a standard deviation of `r round(sd(tumor_count$x), 2)`---as you would see in a typical *Table 1*---you are implying that your data follow this distribution:  
+
+```{r}
+# The implied distribution for Normal(1.1, 1.06)
+ggplot(tumor_count, aes(x = x)) +
+  xlim(-3, 5) +
+  geom_vline(aes(xintercept = mean(tumor_count$x)), color = "red", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean(tumor_count$x) - (2 * sd(tumor_count$x))), 
+             color = "red", linetype = "dotted") +
+  geom_vline(aes(xintercept = mean(tumor_count$x) + (2 * sd(tumor_count$x))), 
+             color = "red", linetype = "dotted") +
+  stat_function(fun = dnorm, 
+                color = "blue",
+                args = list(mean = mean(tumor_count$x), 
+                       sd = sd(tumor_count$x))) + 
+  annotate("text", x = mean(tumor_count$x) - (2 * sd(tumor_count$x)), 
+           y = max(density(tumor_count$x)$y), label = "-2sd", fontface = "italic", 
+           color = "darkred") +
+  annotate("text", x = mean(tumor_count$x) + (2 * sd(tumor_count$x)), 
+           y = max(density(tumor_count$x)$y), label = "+2sd", fontface = "italic", 
+           color = "darkred") +
+  geom_label(x = mean(tumor_count$x), y = 0, label = "bar(x)", parse = TRUE, 
+             color = "darkred") + 
+  theme_bw() + 
+  xlab("Tumor Count") + 
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+```
+
+\  
+
+Clearly, a negative tumor count is impossible, which is indeed the case when you plot the *actual* distribution:  
+
+```{r}
+# Same plot as above, with the actual data added
+ggplot(tumor_count, aes(x = x)) +
+  xlim(-3, 5) +
+  geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 1) +
+  geom_vline(aes(xintercept = mean(tumor_count$x)), color = "red", linetype = "dashed") +
+  geom_vline(aes(xintercept = mean(tumor_count$x) - (2 * sd(tumor_count$x))),
+             color = "red", linetype = "dotted") +
+  geom_vline(aes(xintercept = mean(tumor_count$x) + (2 * sd(tumor_count$x))),
+             color = "red", linetype = "dotted") +
+  stat_function(fun = dnorm, color = "blue",
+                args = list(mean = mean(tumor_count$x), 
+                       sd = sd(tumor_count$x))) + 
+  annotate("text", x = mean(tumor_count$x) - (2 * sd(tumor_count$x)),
+           y = max(density(tumor_count$x)$y), label = "-2sd", fontface = "italic",
+           color = "darkred") +
+  annotate("text", x = mean(tumor_count$x) + (2 * sd(tumor_count$x)),
+           y = max(density(tumor_count$x)$y), label = "+2sd", fontface = "italic",
+           color = "darkred") +
+  geom_label(x = mean(tumor_count$x), y = 0, label = "bar(x)", parse = TRUE,
+             color = "darkred") + 
+  theme_bw() + 
+  xlab("Tumor Count") + 
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+```
+
+Summary statistics for a count variable are often better described by the Poisson distribution, for which the mean is still the arithmetic mean, but the standard deviation is the square root of the mean. This was the reason for the footnote on the *Summary Statistics* table on page 2 of this document: you need to use the proper mean/variance relationship to ensure you are providing the correct values. With this example, the mean would be the same, but the (Poisson) standard deviation would be `r round(sqrt(mean(tumor_count$x)), 2)`, the theoretical distribution would stop at 0---and you'd need to specify somewhere (e.g., in a footnote) that you used the Poisson distribution to obtain this value.       
+
+There are many instances where a basic *Table 1* is just fine, especially if the continuous variables conform to at least an approximately normal distribution. But there are others when it could be obvious that it's wrong, as in the example above, and others in which it could be outright misleading. If you lose credibility in *Table 1*, it's going to be a much harder sell to get readers to trust your *Results* section. 
+
+And if you're a clinician, and you're considering using a study in practice, given only the mean and standard deviation for (say) the ages of patients, would you be confident that their sample represents the same population you are interested in?  
+
+Let's look at this idea using our original Stats Canada data, and take the study group as a whole, instead of being stratified into *control* and *treatment* groups.  
+
+```{r}
+mean(sbp$age)
+sd(sbp$age)
+```
+
+So given this in a *Table 1*, it would be suggesting that ~67% of these patients are between `r round(mean(sbp$age) - sd(sbp$age), 0)` and `r round(mean(sbp$age) + sd(sbp$age), 0)` years old, and that ~95% of them are between `r round(mean(sbp$age) - 2 * sd(sbp$age), 0)` and `r round(mean(sbp$age) + 2 * sd(sbp$age), 0)` years old. Is that true for this data?
+
+Let's look at it. (Always start with visuals!)    
+
+```{r}
+# Histogram/density with normal curve overplotted
+ggplot(sbp, aes(x = age)) +
+  geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 2) +
+  geom_density(color = "transparent", fill = "blue", alpha = 0.3) +
+  stat_function(fun = dnorm, color = "red",
+    args = list(mean = mean(sbp$age), sd = sd(sbp$age))) + 
+  theme_bw() + 
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+
+# quantiles for 2.5, 33, 67, 95
+quantile(sbp$age, probs = c(0.025, 0.33, 0.67, 0.975))
+```
+
+```{r fig.width=4, fig.height=4}
+# ecdf with normal cdf overplotted
+age_cdf = data.frame(x = seq(15, 75, 1), norm_cdf = pnorm(seq(15, 75, 1), 
+                    mean = mean(sbp$age), sd = sd(sbp$age)))
+
+ggplot(sbp, aes(x = age)) +
+  geom_line(data = age_cdf, aes(x = x, y = norm_cdf), color = "red") + 
+  stat_ecdf(color="blue") +
+  theme_bw()
+```
+
+So just by looking at the distribution itself, we can see that our (implied normally-distributed) summary stats are lying to us, and seeing the quantiles as well as over-plotting the normal curve confirms that.  
+
+What if we only saw the summary stats in a paper, as would be the typical case? We'd have to take it on faith that the variable's distribution would at least approximate a normal curve. In some cases, it's irrelevant, e.g., perhaps age in a genetic study. In others, it's essential, e.g., perhaps age in pediatric neurosurgery. A little critical thought is required to determine the relative importance of summary stats in *Table 1* to the study and your intended use of that study.     
+
+What would be an alternative to this? Of course, some authors use medians and interquartile (IQR) ranges for non-normal data, which is a great alternative, but we then lose the inferential power that summary statistics can provide when a particular distribution matches our data, such as in the Poisson example, above. On the other hand, that adds a level of complexity to a publication that may not be necessary or warranted.  
+
+Ideally, one would like to see a more modern *Table 1*, where you see summary statistics alongside a [sparkline](https://en.wikipedia.org/wiki/Sparkline)-type of mini-graph in the table as well, something that compactly shows the observed distribution. Unfortunately, it is not currently easy to do this in an automated fashion entirely inside R. There are a few workarounds possible, including creating the graphs, saving them to disk, then loading the saved pictures inside the table, as seen below.  
+
+```{r}
+# Load dplyr for its filter command (like SQL's "where")
+library(dplyr)
+
+# Create ggplot objects
+p1 = ggplot(filter(sbp, treatment_group == "Control"), aes(x = age)) +
+  geom_histogram(fill="darkblue", color = "white", size = 0.1, binwidth = 5) +
+  xlim(10, 70) +
+  theme_void() 
+ggsave("p1.png", p1, width = 0.25, height = 0.15, units = "in")
+
+p2 = ggplot(filter(sbp, treatment_group == "Treatment"), aes(x = age)) +
+  geom_histogram(fill="darkblue", color = "white", size = 0.1, binwidth = 5) +
+  xlim(10, 70) +
+  theme_void()
+ggsave("p2.png", p2, width = 0.25, height = 0.15, units = "in")
+
+p3 = ggplot(filter(sbp, treatment_group == "Control"), aes(x = age)) +
+  geom_density(fill="darkblue", color = "white") +
+  xlim(10, 70) +
+  theme_void() 
+ggsave("p3.png", p3, width = 0.25, height = 0.15, units = "in")
+
+p4 = ggplot(filter(sbp, treatment_group == "Treatment"), aes(x = age)) +
+  geom_density(fill="darkblue", color = "white") +
+  xlim(10, 70) +
+  theme_void()
+ggsave("p4.png", p4, width = 0.25, height = 0.15, units = "in")
+
+p5 = ggplot(filter(sbp, treatment_group == "Control"), aes(x = age)) +
+  geom_histogram(aes(y = ..density..), color = "white", fill="darkblue", 
+                 size = 0.1, binwidth = 5) +
+  geom_density(fill="#DEEBF7", color = "black", size = 0.1, alpha = 0.3) +
+  xlim(10, 70) +
+  theme_void() 
+ggsave("p5.png", p5, width = 0.25, height = 0.15, units = "in")
+
+p6 = ggplot(filter(sbp, treatment_group == "Treatment"), aes(x = age)) +
+  geom_histogram(aes(y = ..density..), color = "white", fill="darkblue",
+                 size = 0.1, binwidth = 5) +
+  geom_density(fill="#DEEBF7", color = "black", size = 0.1, alpha = 0.2) +
+  xlim(10, 70) +
+  theme_void()
+ggsave("p6.png", p6, width = 0.25, height = 0.15, units = "in")
+
+p7 = ggplot(filter(sbp, treatment_group == "Control"), 
+            aes(x = factor(1), fill = exercise)) +
+  geom_bar() +
+  theme_void() + 
+  theme(legend.position = "none") + 
+  scale_fill_brewer() # 3 colors hex codes: brewer.pal(3, "Blues")
+ggsave("p7.png", p7, width = 0.10, height = 0.25, units = "in")
+
+p8 = ggplot(filter(sbp, treatment_group == "Treatment"), 
+            aes(x = factor(1), fill = exercise)) +
+  geom_bar() +
+  theme_void() + 
+  theme(legend.position = "none") + 
+  scale_fill_brewer()
+ggsave("p8.png", p8, width = 0.10, height = 0.25, units = "in")
+
+p9 = ggplot(filter(sbp, treatment_group == "Control"), 
+            aes(x = factor(1), fill = exercise)) +
+  geom_bar(width = 1) +
+  theme_void() + 
+  theme(legend.position = "none") + 
+  coord_polar(theta = "y") +
+  scale_fill_brewer()
+ggsave("p9.png", p9, width = 0.5, height = 0.5, units = "in")
+
+p10 = ggplot(filter(sbp, treatment_group == "Treatment"), 
+             aes(x = factor(1), fill = exercise)) +
+  geom_bar(width = 1) +
+  theme_void() + 
+  theme(legend.position = "none") + 
+  coord_polar(theta = "y") +
+  scale_fill_brewer()
+ggsave("p10.png", p10, width = 0.5, height = 0.5, units = "in")
+```
+
+
+The `tableone` package also has some useful summary functions, which we'll use to create a more "advanced" *Table 1*. 
+
+```{r}
+# You can see the summary stats and object structure using summary
+summary(table_1_lies)
+```
+
+And with these pieces inserted into an `rmarkdown` table, it might look something like this (see the `.Rmd` file for a complete view of the table code):  
+
+```{r eval=FALSE}
+|  | level | Control |    | Treatment |    |
+|------------------------|:------|--------:|:--:|----------:|:--:|
+| *Continuous variable example*  |  |  |  |  |  |
+| age (mean (sd)) *histogram only* | | `r round(table_1_lies$ContTable$Control[1,4], 1)`  (`r round(table_1_lies$ContTable$Control[1,5], 2)`) | ![](p1.png) | `r round(table_1_lies$ContTable$Treatment[1,4], 1)`  (`r round(table_1_lies$ContTable$Treatment[1,5], 2)`)  | ![](p2.png) |
+| age (mean (sd)) *density only* | | `r round(table_1_lies$ContTable$Control[1,4], 1)`  (`r round(table_1_lies$ContTable$Control[1,5], 2)`) | ![](p3.png) | `r round(table_1_lies$ContTable$Treatment[1,4], 1)`  (`r round(table_1_lies$ContTable$Treatment[1,5], 2)`)  | ![](p4.png) |
+| age (mean (sd)) *both* |  | `r round(table_1_lies$ContTable$Control[1,4], 1)`  (`r round(table_1_lies$ContTable$Control[1,5], 2)`) | ![](p5.png) | `r round(table_1_lies$ContTable$Treatment[1,4], 1)`  (`r round(table_1_lies$ContTable$Treatment[1,5], 2)`)  | ![](p6.png) |
+| *Categorical variable example*  |  |  |  |  |  |
+| exercise (count (%)) | 1 (Low) <br> 2 (Medium) <br> 3 (High) | `r table_1_lies$CatTable$Control$exercise[1,5]`  (`r round(table_1_lies$CatTable$Control$exercise[1,6], 1)`) <br> `r table_1_lies$CatTable$Control$exercise[2,5]`  (`r round(table_1_lies$CatTable$Control$exercise[2,6], 1)`) <br> `r table_1_lies$CatTable$Control$exercise[3,5]` (`r round(table_1_lies$CatTable$Control$exercise[3,6], 1)`)  <br> | ![](p7.png) | `r table_1_lies$CatTable$Treatment$exercise[1,5]`  (`r round(table_1_lies$CatTable$Treatment$exercise[1,6], 1)`)  <br> `r table_1_lies$CatTable$Treatment$exercise[2,5]`  (`r round(table_1_lies$CatTable$Treatment$exercise[2,6], 1)`) <br> `r table_1_lies$CatTable$Treatment$exercise[3,5]`  (`r round(table_1_lies$CatTable$Treatment$exercise[3,6], 1)`)  <br> | ![](p8.png) |
+| exercise (count (%)) | 1 (Low) <br> 2 (Medium) <br> 3 (High) | `r table_1_lies$CatTable$Control$exercise[1,5]`  (`r round(table_1_lies$CatTable$Control$exercise[1,6], 1)`) <br> `r table_1_lies$CatTable$Control$exercise[2,5]`  (`r round(table_1_lies$CatTable$Control$exercise[2,6], 1)`) <br> `r table_1_lies$CatTable$Control$exercise[3,5]` (`r round(table_1_lies$CatTable$Control$exercise[3,6], 1)`)  <br> | ![](p9.png) | `r table_1_lies$CatTable$Treatment$exercise[1,5]`  (`r round(table_1_lies$CatTable$Treatment$exercise[1,6], 1)`)  <br> `r table_1_lies$CatTable$Treatment$exercise[2,5]`  (`r round(table_1_lies$CatTable$Treatment$exercise[2,6], 1)`) <br> `r table_1_lies$CatTable$Treatment$exercise[3,5]`  (`r round(table_1_lies$CatTable$Treatment$exercise[3,6], 1)`)  <br> | ![](p10.png) |
+```
+
+\newpage  
+
+*Table 1. This is a test. This is only a test. Do not adjust your set.*  
+
+```{r echo = FALSE}
+knitr::include_graphics("better_table_1.png")
+```
+
+It's an open question on how and when such advances might make it into medical journals.  
+
+*Table 1* has been a staple of medical research for decades. Hopefully, you'll treat them with a more critical eye now that you've seen ways it can be either helpful or harmful. But perhaps most importantly, the possible discrepancies between summary statistics and the actual data should illustrate how important it is to do EDA work *every time* you analyze data.   
+
+*** 
+
+\newpage  
+
+*** 
+
+## Exercise and Homework Answers
+
+**Exercise R1**  
+
+1. Create a histogram/density plot of the `sbp` variable using `ggplot2`, using a custom color fill for density (try #A30134).  
+
+```{r include = FALSE}
+ggplot(sbp, aes(x = sbp)) +
+  geom_histogram(aes(y = ..density..), color = "gray95") +
+  geom_density(fill = "#A30134", alpha = 0.2)
+```
+
+2. Create a horizontal bar plot of the `salt` variable, ordered with the highest value closest to the *x*-axis.
+
+```{r include = FALSE}
+ggplot(sbp, aes(x = fct_infreq(salt))) +
+  geom_bar() + 
+  coord_flip() 
+```
+
+
+**Exercise R2**  
+
+1. Create a table of counts for the `race` variable that includes a sum value.  
+
+```{r include = FALSE}
+addmargins(table(sbp$race))
+```
+
+2. Use the `describe` function to obtain summary stats for the `sbp` variable only.  
+
+```{r include = FALSE}
+describe(sbp$sbp)
+```
+
+3. Plot the mean, median, and mode as vertical lines of different colors on a histogram + density ggplot for the `sbp` variable.  
+
+```{r include = FALSE}
+sbp_dens = data.frame(sbp = density(sbp$sbp)$x, 
+                      density = density(sbp$sbp)$y)
+
+ggplot(sbp, aes(x = sbp)) +
+  geom_histogram(aes(y = ..density..), color = "gray95") +
+  geom_density(fill = "#A30134", alpha = 0.2) +
+  geom_vline(aes(xintercept = mean(sbp)), color = "darkblue") + 
+  geom_vline(aes(xintercept = median(sbp)), color = "darkgreen") + 
+  geom_vline(aes(xintercept = sbp_dens[which.max(sbp_dens[, 2]), 1]), color = "orange") 
+```
+
+*Extra credit:* replace `describe` with `multi.hist` (also from the `psych` package) in the code chunk that introduces the `psych` package above, and see what happens.  
+
+```{r include = FALSE, eval = FALSE}
+multi.hist(sbp[ , sapply(sbp, is.numeric)])
+```
+
+**Homework** (using the neurosurg data)  
+
+
+1. Use either a data set of your choice (perhaps something you're working on now) or data on neurosurgery outcomes to obtain summary stats and a visual of the distribution of at least *one numeric* and *one categorical* variable.  
+
+```{r include = FALSE, cache = TRUE}
+library(tidyverse)
+library(psych)
+
+neuro = read.csv("https://raw.githubusercontent.com/Rmadillo/SCH_R_Training/master/Diff_Inf/Shurtleffetal2015_episurg_data.csv", header = TRUE)
+
+describe(neuro$FSIQ)
+
+addmargins(table(neuro$Side))
+
+ggplot(neuro, aes(x = FSIQ)) +
+  geom_histogram(aes(y = ..density..), color = "gray95", binwidth = 5) +
+  geom_density(fill = "#0076C0", alpha = 0.5) + 
+  theme_bw()
+
+ggplot(neuro, aes(x = Side)) +
+  geom_bar() +
+  coord_flip() +
+  theme_bw()
+```
+
+2. (*optional*) Work through the *Extra Credit* section below and create a simple *Table 1* summary from your own data or from the neurosurgery data linked in question 1.  
+
+```{r include = FALSE}
+library(tableone)
+
+table_vars = c("Duration", "Side", "Phase", "FSIQ", "Verbal", "Nonverbal")
+
+fct_vars = c("Duration", "Side", "Phase")
+
+neuro_table_1 = CreateTableOne(table_vars, , neuro, fct_vars, test = FALSE)
+
+neuro_table_2 = print(neuro_table_1, showAllLevels = TRUE, quote = FALSE,
+                noSpaces = TRUE, printToggle = FALSE)
+
+knitr::kable(neuro_table_2, align = 'crr')
+```
+
+3. (*optional*) Create an "advanced" *Table 1* from your own data or from the neurosurgery data linked in question 1, using `Phase` as the strata. [Email to Dwight](mailto:dwight.barry@seattlechildrens.org?Subject=TableOne) if you want to have it shared next class for participant feedback (either anonymously or not, your choice).    
+
+```{r include = FALSE}
+table_vars = c("Duration", "Side", "Phase", "FSIQ", "Verbal", "Nonverbal")
+
+fct_vars = c("Duration", "Side", "Phase")
+
+neuro_table_1 = CreateTableOne(table_vars, strata = "Phase", neuro, 
+                fct_vars, test = FALSE)
+
+neuro_table_2 = print(neuro_table_1, showAllLevels = TRUE, quote = FALSE,
+                noSpaces = TRUE, printToggle = FALSE)
+
+knitr::kable(neuro_table_2, align = 'crr')
+```
+
+***  
+
+*End of file*  
