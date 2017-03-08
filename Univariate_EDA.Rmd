@@ -211,7 +211,7 @@ ggpairs(data = sbp, columns = c(1:6), mapping = aes(color = trt, alpha = 0.5))
 
 The power of `ggplot2` comes from its immense ecosystem of add-ons and customization options, as well as its seamless integration with other key R packages (e.g., `dplyr`, `tidyr`, `forcats`, etc.). This, of course, can come at the cost of complication, but we think the learning curve is worth it: you can get publication quality graphs that you'd simply be unable to create in other tools.  
 
-We'll now create the same graphs as above using `ggplot2`. 
+We'll now create the same graphs as we did with `base` using `ggplot2` instead. 
 
 Note the small and large changes in the code as we progress through these examples. They are there on purpose, to introduce different options and ideas for customizing plots. Like most things R, it will take practice and use in real projects to instill familiarity with `ggplot2`. But these examples can help serve as a leap-off point for your own work.  
 
@@ -421,6 +421,60 @@ Wrapping a table in the `addmargins` function gives you a sum as well:
 addmargins(table(sbp$Exercise))
 ```
 
+\  
+
+Despite its name, R's `mode` function does not give you the mode of a distribution (it actually gives you how something is stored in R). There is no built-in function in R to get the mode (or modes), but a function [cribbed from Stack Overflow](http://stackoverflow.com/questions/2547402/is-there-a-built-in-function-for-finding-the-mode) can get us this information:
+
+```{r}
+# Function to calculate mode(s)
+Mode <- function(x, na.rm = FALSE) {
+    if(na.rm){
+      x = x[!is.na(x)]
+    }
+  x <- sort(x)  
+  u <- unique(x)
+  y <- lapply(u, function(y) length(x[x==y]))
+  u[which(unlist(y) == max(unlist(y)))]
+} 
+```
+
+Which will work for numeric...
+
+```{r}
+Mode(sbp$bmi)
+```
+
+...as well as categorical variables. 
+
+```{r}
+Mode(sbp$Exercise)
+```
+
+\  
+
+We don't often need the exact value of the mode in continuous data, but it sometimes can be a useful value to show in plots. We can get the value of maximum density with the `which.max` function, which can be used alone or in a plot.  
+
+```{r}
+# Calculate density and place into a data frame
+weight_dens = data.frame(weight = density(sbp$weight)$x, density = density(sbp$weight)$y)
+
+# Obtain the weight value at which density is maximized
+weight_dens[which.max(weight_dens[, 2]), ]
+
+# Plot that as a line in a combined histogram + density plot
+ggplot(sbp, aes(x = weight)) +
+  geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 10) +
+  geom_density(color = "transparent", fill = "blue", alpha = 0.3) +
+  geom_vline(aes(xintercept = weight_dens[which.max(weight_dens[, 2]), 1]), 
+             color = "orange") + 
+  theme_bw() + 
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+```
+
+\  
+
+There are packages with functions to calculate modes (e.g., [`modeest`](https://cran.r-project.org/web/packages/modeest/index.html)), but they come with an additional complexity that is usually not necessary for typical analytic needs.  
+
 ### Summary stats with the `psych` package
 
 The `psych` package has a beautiful collection of functions for a more extensive collection of summary statistics and effect sizes, which we'll see in upcoming workshops. Here, we'll use its version of `summary`, which is called `describe`. 
@@ -440,28 +494,14 @@ library(psych)
 describe(sbp[ , sapply(sbp, is.numeric)])
 
 # Make it pretty in Rmd if you'd like with kable, e.g., 
-# knitr::kable(round(describe(sbp[ , sapply(sbp, is.numeric)]), 1))
+knitr::kable(round(describe(sbp[ , sapply(sbp, is.numeric)], skew = FALSE), 1))
 ```
 
-We don't often need the exact value of the mode in continuous data, but it sometimes can be a useful value to show in plots. We can get the value of maximum density with the `which.max` function, which can be used alone or in a plot.  
+### How many decimals should I report?
 
-```{r}
-# Calculate density and place into a data frame
-weight_dens = data.frame(weight = density(sbp$weight)$x, 
-                         density = density(sbp$weight)$y)
+Just because R's output gives you a bunch of decimals doesn't mean you need to use them. Think instead about how much precision is realistic for your values, and round accordingly.  
 
-# Obtain the weight value at which density is maximized
-weight_dens[which.max(weight_dens[, 2]), ]
-
-# Plot that as a line in a combined histogram + density plot
-ggplot(sbp, aes(x = weight)) +
-  geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 10) +
-  geom_density(color = "transparent", fill = "blue", alpha = 0.3) +
-  geom_vline(aes(xintercept = weight_dens[which.max(weight_dens[, 2]), 1]), 
-             color = "orange") + 
-  theme_bw() + 
-  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
-```
+A decent rule of thumb is to use no additional decimals for medians, no or 1 additional decimal for IQR or quantiles, 1 additional decimal for means, and 2 additional decimals for standard deviation. But these are not hard-and-fast rules; use what makes sense in the context of the values and their meaning in the analysis.     
 
 *** 
 
@@ -475,15 +515,17 @@ ggplot(sbp, aes(x = weight)) +
 
 ***
 
+*End of class*  
+
 \newpage
 
-# Homework: Summary Stats, Data Viz, and the (insidious) *Table 1*
+# Homework: Summary Stats, Data Viz, & the (insidious?) *Table 1*
 
 ## Homework  
 
 1. Use either a data set of your choice (perhaps something you're working on now) or data on neurosurgery outcomes [available on GitHub](https://raw.githubusercontent.com/Rmadillo/SCH_R_Training/master/Diff_Inf/Shurtleffetal2015_episurg_data.csv)[^3] to obtain summary stats and a visual of the distribution of at least *one numeric* and *one categorical* variable.  
 2. (*optional*) Work through the *Extra Credit* section below and create a simple *Table 1* summary from your own data or from the neurosurgery data linked in question 1.  
-3. (*optional*) Create an "advanced" *Table 1* from your own data or from the neurosurgery data linked in question 1, using `Phase` as the strata. [Email to Dwight](mailto:dwight.barry@seattlechildrens.org?Subject=TableOne) if you want to have it shared next class for participant feedback (either anonymously or not, your choice).    
+3. (*optional*) Create an "advanced" *Table 1* from your own data or from the neurosurgery data linked in question 1, using `Phase` as the strata. [Email it to Dwight](mailto:dwight.barry@seattlechildrens.org?Subject=TableOne) if you make your own and want to have it shared next class for participant feedback (either anonymously or not, your choice).    
 
 [^3]: Data: https://raw.githubusercontent.com/Rmadillo/SCH_R_Training/master/Diff_Inf/Shurtleffetal2015_episurg_data.csv; metadata: https://github.com/Rmadillo/SCH_R_Training/blob/master/Diff_Inf/README.md. 
 
@@ -495,7 +537,12 @@ ggplot(sbp, aes(x = weight)) +
 
 The `tableone` package has a simple interface for creating the typical *Table 1* that you find in many medical papers.  
 
-```{r}
+```{r cache = TRUE}
+# Reload the data if needed
+# sbp = read.csv("https://ssc.ca/sites/ssc/files/archive/documents/case_studies/2003/documents/datafile.dat", header = T)
+# sbp = sbp[ , 1:18]
+# sbp[ , c(2:5, 9:12, 14:18)] = data.frame(apply(sbp[ , c(2:5, 9:12, 14:18)], 2, as.factor))
+
 # Load tableone package
 library(tableone)
 
@@ -516,10 +563,6 @@ table_1_lies = CreateTableOne(table_vars, sbp, fct_vars,
 # Put the table into an object so it will show up in Rmd files
 table_1_lies_object = print(table_1_lies, showAllLevels = TRUE, quote = FALSE,
                 noSpaces = TRUE, printToggle = FALSE)
-
-# When using html for Rmd output, a more LaTeX-like table can be made with `htmlTable`  
-# htmlTable::htmlTable(table_1_lies_object, css.cell = "padding-left: 2em; 
-#            padding-right: 2em;", align = c('c', 'r', 'r'))
 
 # Print the table
 knitr::kable(table_1_lies_object, align = 'crr')
@@ -617,7 +660,7 @@ There are many instances where a basic *Table 1* is just fine, especially if the
 
 And if you're a clinician, and you're considering using a study in practice, given only the mean and standard deviation for (say) the ages of patients, would you be confident that their sample represents the same population you are interested in?  
 
-Let's look at this idea using our original Stats Canada data, and take the study group as a whole, instead of being stratified into *control* and *treatment* groups.  
+Let's look at this idea by returning to our original Stats Canada case study data, and take the study group as a whole, instead of being stratified into *control* and *treatment* groups.  
 
 ```{r}
 mean(sbp$age)
@@ -642,7 +685,7 @@ ggplot(sbp, aes(x = age)) +
 quantile(sbp$age, probs = c(0.025, 0.33, 0.67, 0.975))
 ```
 
-```{r fig.width=4, fig.height=4}
+```{r fig.width = 4, fig.height = 4}
 # ecdf with normal cdf overplotted
 age_cdf = data.frame(x = seq(15, 75, 1), norm_cdf = pnorm(seq(15, 75, 1), 
                     mean = mean(sbp$age), sd = sd(sbp$age)))
@@ -745,7 +788,8 @@ ggsave("p10.png", p10, width = 0.5, height = 0.5, units = "in")
 The `tableone` package also has some useful summary functions, which we'll use to create a more "advanced" *Table 1*. 
 
 ```{r}
-# You can see the summary stats and object structure using summary
+# You can see the summary stats and object structure using summary, but str helps
+# Not run: str(table_1_lies)
 summary(table_1_lies)
 ```
 
@@ -836,8 +880,9 @@ ggplot(sbp, aes(x = sbp)) +
 multi.hist(sbp[ , sapply(sbp, is.numeric)])
 ```
 
-**Homework** (using the neurosurg data)  
+***  
 
+**Homework** (using the neurosurg data)  
 
 1. Use either a data set of your choice (perhaps something you're working on now) or data on neurosurgery outcomes to obtain summary stats and a visual of the distribution of at least *one numeric* and *one categorical* variable.  
 
@@ -879,20 +924,67 @@ neuro_table_2 = print(neuro_table_1, showAllLevels = TRUE, quote = FALSE,
 knitr::kable(neuro_table_2, align = 'crr')
 ```
 
-3. (*optional*) Create an "advanced" *Table 1* from your own data or from the neurosurgery data linked in question 1, using `Phase` as the strata. [Email to Dwight](mailto:dwight.barry@seattlechildrens.org?Subject=TableOne) if you want to have it shared next class for participant feedback (either anonymously or not, your choice).    
+3. (*optional*) Create an "advanced" *Table 1* from your own data or from the neurosurgery data linked in question 1, using `Phase` as the strata. [Email it to Dwight](mailto:dwight.barry@seattlechildrens.org?Subject=TableOne) if you make your own and want to have it shared next class for participant feedback (either anonymously or not, your choice).    
 
 ```{r include = FALSE}
+# No graphics
+library(ggplot2)
+
 table_vars = c("Duration", "Side", "Phase", "FSIQ", "Verbal", "Nonverbal")
 
 fct_vars = c("Duration", "Side", "Phase")
 
-neuro_table_1 = CreateTableOne(table_vars, strata = "Phase", neuro, 
+neuro_table_1 = CreateTableOne(table_vars, strata = "Duration", neuro, 
                 fct_vars, test = FALSE)
 
 neuro_table_2 = print(neuro_table_1, showAllLevels = TRUE, quote = FALSE,
                 noSpaces = TRUE, printToggle = FALSE)
 
 knitr::kable(neuro_table_2, align = 'crr')
+```
+
+```{r include = FALSE}
+# Using graphics
+library(dplyr)
+
+# Create ggplot objects
+hwp1 = ggplot(filter(neuro, Duration == "Short"), aes(x = FSIQ)) +
+  geom_histogram(fill="darkblue", color = "white", size = 0.1, binwidth = 5) +
+  xlim(75, 145) +
+  theme_void() 
+ggsave("hwp1.png", hwp1, width = 0.25, height = 0.15, units = "in")
+
+hwp2 = ggplot(filter(neuro, Duration == "Long"), aes(x = FSIQ)) +
+  geom_density(fill="darkblue", color = "white") +
+  xlim(75, 145) +
+  theme_void() 
+ggsave("hwp2.png", hwp2, width = 0.25, height = 0.15, units = "in")
+
+hwp7 = ggplot(filter(neuro, Duration == "Short"), 
+            aes(x = factor(1), fill = Side)) +
+  geom_bar() +
+  theme_void() + 
+  theme(legend.position = "none") + 
+  scale_fill_brewer() # 3 colors hex codes: brewer.pal(3, "Blues")
+ggsave("hwp7.png", hwp7, width = 0.10, height = 0.25, units = "in")
+
+hwp8 = ggplot(filter(neuro, Duration == "Long"), 
+            aes(x = factor(1), fill = Side)) +
+  geom_bar() +
+  theme_void() + 
+  theme(legend.position = "none") + 
+  scale_fill_brewer() # 3 colors hex codes: brewer.pal(3, "Blues")
+ggsave("hwp8.png", hwp8, width = 0.10, height = 0.25, units = "in")
+
+# etc., etc. 
+```
+
+```{r eval = FALSE, include = FALSE}
+# Cut and paste into an Rmd to create a table w/ graphs
+|  | level | Control |    | Treatment |    |
+|------------------------|:------|--------:|:--:|----------:|:--:|
+| FSIQ (mean (sd)) | | `r round(neuro_table_1$ContTable$Long[1,4], 1)`  (`r round(neuro_table_1$ContTable$Long[1,5], 2)`) | ![](hwp1.png) | `r round(neuro_table_1$ContTable$Short[1,4], 1)`  (`r round(neuro_table_1$ContTable$Short[1,5], 2)`)  | ![](hwp2.png) |
+| Side (count (%)) | Left <br> Right | `r neuro_table_1$CatTable$Long$Side[1,5]`  (`r round(neuro_table_1$CatTable$Long$Side[1,6], 1)`) <br> `r neuro_table_1$CatTable$Long$Side[2,5]`  (`r round(neuro_table_1$CatTable$Long$Side[2,6], 1)`) <br> | ![](p7.png) | `r neuro_table_1$CatTable$Short$Side[1,5]`  (`r round(neuro_table_1$CatTable$Short$Side[1,6], 1)`)  <br> `r neuro_table_1$CatTable$Short$Side[2,5]`  (`r round(neuro_table_1$CatTable$Short$Side[2,6], 1)`) <br> | ![](p8.png) |
 ```
 
 ***  
