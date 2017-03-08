@@ -13,17 +13,31 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.height 
 # install.packages("beanplot", "GGally", "gridExtra", "rgl", "scales", "vcd", "VIM", dependencies = TRUE)
 ```
 
+# "The" Analytics Process
+
+Many books, articles, and presentations use a conceptual diagram of the analytics workflow, which look mostly like this ([*Grolemund & Wickham 2017* ](http://r4ds.had.co.nz/introduction.html)):  
+
+```{r echo = FALSE, fig.height = 1.5}
+knitr::include_graphics("data-science-process-wickham2017.png")
+```
+
+In reality, the analytics process is more like exploratory research, with advances and backtracks, restarts and dead-ends ([*Kandel et al. 2011*](http://vis.stanford.edu/files/2011-DataWrangling-IVJ.pdf)):  
+
+```{r echo = FALSE, fig.height = 5}
+knitr::include_graphics("analysis_process_kandeletal2011.png")
+```
+
+Exploratory data analysis includes not just an analysis of your data, but an assessment of data quality. We'll start there today.    
 
 # Bivariate (and more) EDA
 
-Once we have a thorough understanding of each variable, we're ready to explore the possible relationships between variables---usually two or three dimensions (sometimes four) can be visualized with a single plot. Matrix plots provide additional ways to compare 1-4 dimensions across several variables.    
+Let's load the packages we'll use today first:  
 
-Let's load the packages we'll use today first:
 ```{r}
+library(psych)       # summary stats
 library(tidyverse)   # gpplot, dplyr, and tidyr packages
 library(forcats)     # factor manipulation for tidy data
 library(scales)      # additional scales for ggplot axes
-library(psych)       # summary stats
 library(VIM)         # visualize missing data
 library(beanplot)    # beanplots
 library(ggExtra)     # marginal plots
@@ -41,13 +55,13 @@ sbp = sbp[ , 1:18]
 sbp[ , c(2:5, 9:12, 14:18)] = data.frame(apply(sbp[ , c(2:5, 9:12, 14:18)], 2, as.factor))
 ```
 
-
+***  
 
 ## Data Quality Check
 
 ### Any missing, duplicate, or suspicious values?
 
-For the purposes of training, we started with univariate data exploration to get quickly into analysis with R, but in reality you should do some basic quality checks of your data at the start---specifically, explore missing data, duplicated rows, or suspicious values.  
+For the purposes of this course, we started in week 1 with univariate data exploration to get quickly into analysis with R, but in reality you should do some basic quality checks of your data at the very start---specifically, explore missing data, duplicated rows, or suspicious values.  
 
 We'll create a second data set from the original, and mess with it a little to show what this might look like. 
 
@@ -67,6 +81,8 @@ bad_sbp$age[is.na(bad_sbp$age)] = sample(180:222, sum(is.na(bad_sbp$age)), repla
 # Add a duplicate line (repeat row 72 on new row 501)
 bad_sbp[501, ] = bad_sbp[72, ]
 ```
+
+\  
 
 The `multi.hist` function in the `psych` package is good for checking out whether a numeric variable has suspicious values.  
 
@@ -159,13 +175,11 @@ Rarely, factors don't convert like you'd expect (especially dates), so it's alwa
 table(sbp$Gender, sbp$gender)
 ```
 
-\  
-
 *** 
 
 ## Visualizing Bivariate Relationships
 
-Having done some basic data quality checks (above) and some univariate EDA work (two weeks ago & earlier today), we can now explore our variables conditioned on other variables, i.e., bi-/multi- variate relationships.  
+Having done some basic data quality checks (above) and some univariate EDA work (two weeks ago & earlier today), we can now explore our variables conditioned on other variables, i.e., bi-/multi- variate relationships. Usually, two or three dimensions (sometimes four) can be visualized with a single plot. Matrix plots provide additional ways to compare 1-4 dimensions across several variables.  
 
 ### Numeric/Categorical data
 
