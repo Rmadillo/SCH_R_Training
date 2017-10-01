@@ -1,0 +1,928 @@
+---
+title: "Plotting in R, Week 2: ggplot2 graphics"
+author: "Dwight Barry"
+date: "Sept 13th 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(gridExtra)
+library(forcats)
+library(ggplot2)
+```
+## Today's structure
+
+- Very short overview of "why ggplot?"  
+- Structure of a ggplot  
+- Univariate plots  
+- Faceting/Grouping  
+- Bivariate plots, with basic inference  
+- Multivariate plot example  
+- Labels and themes  
+- The ggplot philosophy (time permitting)  
+
+## Overview
+
+In 1999, Leland Wilkinson published the first edition of [*The Grammar of Graphics*](https://www.amazon.com/Grammar-Graphics-Statistics-Computing/dp/0387245448), a milestone in data visualization literature: 
+
+*"Destined to become a landmark in statistical graphics, this book provides a formal description of graphics, particularly static graphics, **playing much the same role for graphics as probability theory played for statistics**."* --Journal of the American Statistical Association (2000; my emphasis)
+
+It formalized ideas that had been floating around that community for decades, and in particular to today's workshop, set Hadley Wickham on the road to create a graphics package that allowed R users to use and apply that philosophy. The early work on ggplot started in 2005, but really took off in 2009 after the publication of Wickham's *ggplot2: Elegant Graphics for Data Analysis*, which provided R users with a comprehensive introduction to the philosophy and application of Wilkinson's ideas. The second edition of that book was published in 2015, and was released as [open source on Github](https://github.com/hadley/ggplot2-book) as well as via eBook by Springer. That book serves as both a supplement to today's workshop as well as the direct source for much of the content of this outline.  
+
+A major advantage to having a coherent theory behind statistical graphics is that, first, you can work from a set of core principles to develop essentially any kind of graphic you can think of, and second, data visualization is no longer a long series of special cases, so you can move through the visualization process to final publication graphics much faster. And you know what else? Plots in ggplot are *pretty*, right out of the box.  
+
+## Getting started
+
+`ggplot2`, the current incarnation[^1] of ggplot in R, is part of the "tidyverse", a collection of interoperable packages meant to streamline the entire analytics process, from data acquisition to final product. So, you can load it alongside those using `library(tidyverse)` or you can load it by itself:  
+
+
+[^1]: The next stage will be [`ggvis`](http://ggvis.rstudio.com/), which expands the philosophy of ggplot more formally into interactive graphics via a web browser.  
+
+```{r}
+library(ggplot2)
+```
+
+### Let's plot something first
+
+Last week we used `base` graphics to explore the basic function `plot`:
+
+```{r fig.height = 3.75, fig.width = 4, fig.align='center'}
+plot(pressure)
+```
+
+It actually takes a little more work to do the same thing in `ggplot2`:
+
+```{r fig.height = 2.75, fig.width = 4, fig.align='center'}
+ggplot(data = pressure, mapping = aes(x = temperature, y = pressure)) +
+    geom_point()
+```
+
+Actually, `ggplot2` has built-in understandings of positions in the function call, so this is directly equivalent to the above code. There's still a little more code than in `base`, though. 
+
+```
+ggplot(pressure, aes(temperature, pressure)) +
+    geom_point()
+```
+
+So...just need to get a quick view of the data? `plot` is your friend. Want to have something you aren't embarrased to show to your colleagues? `ggplot2` (or `lattice`) is clearly more useful.  
+
+## A beastiary of statistical plots
+
+In this section, we'll just go through the major plot types and geoms/stats; occasionally there will be some customization but we won't discuss those until later in the workshop (if at all; depends on time). 
+
+In other words, we're setting aside theory for a moment to jump right into practice.  
+
+The `ggplot2` cheatsheet might be a useful companion here, but in essence, here's how a basic call to ggplot is structured:
+
+```
+ggplot(data = <data frame>, mapping = aes(<mappings>)) +
+    <a "geom" layer>()
+```
+
+So, 
+
+```
+ggplot(pressure, aes(temperature, pressure)) +
+    geom_point()
+```
+
+means "create a scatterplot using the pressure data, with temperature on the x-axis and pressure on the y-axis."
+
+### The data
+
+The 2003 Annual Meeting of the Statistical Society of Canada explored a [case study](https://ssc.ca/en/case-studies-2003-annual-meeting) aimed at predicting systolic blood pressure from [a variety of physiological and genetic variables](https://ssc.ca/en/case-studies-2003-annual-meeting#data). We'll use the physiological variables to illustrate a variety of ggplot types.      
+
+```{r dataload, cache = TRUE}
+# Load the data
+sbp = read.csv("https://ssc.ca/sites/ssc/files/archive/documents/case_studies/2003/documents/datafile.dat", header = T)
+
+# Reduce data to the 18 physiological variable columns
+sbp = sbp[ , 1:18]
+
+# We'll convert the numeric factors to actual factors, 2 means apply to columns
+sbp[ , c(2:5, 9:12, 14:18)] = data.frame(apply(sbp[ , c(2:5, 9:12, 14:18)], 2, as.factor))
+
+# Let's look at the structure of this data (not shown)
+# str(sbp)
+```
+
+\newpage  
+
+### Histogram and density plots
+
+Plotting the distibution of a variable is done with `geom_histogram` and/or `geom_density`. (Density is just the *relative* frequency, based on the locations of the actual data points.) Note our `aes` has only one variable, which `ggplot2` will interpret as the x-axis variable by default.  
+
+```{r eval = FALSE}
+# Histogram
+ggplot(sbp, aes(sbp)) +
+    geom_histogram()
+
+# Histogram with designated binwidth
+ggplot(sbp, aes(sbp)) +
+    geom_histogram(binwidth = 10)
+
+# Density
+ggplot(sbp, aes(sbp)) +
+    geom_density()
+
+# Density superimposed on histogram, note the first layer's aes  
+# with a custom bin width and some color/fill options
+ggplot(sbp, aes(x = sbp)) +
+    geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 10) +
+    geom_density(color = "transparent", fill = "blue", alpha = 0.4)
+```
+
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+# Histogram
+p1 = ggplot(sbp, aes(sbp)) +
+    geom_histogram()
+
+# Histogram with designated binwidth
+p2 = ggplot(sbp, aes(sbp)) +
+    geom_histogram(binwidth = 10)
+
+# Density
+p3 = ggplot(sbp, aes(sbp)) +
+    geom_density()
+
+# Density superimposed on histogram, note y = ..density.. in the first layer's aes
+p4 = ggplot(sbp, aes(x = sbp)) +
+    geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 10) +
+    geom_density(color = "transparent", fill = "blue", alpha = 0.4)
+
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+##### *Exercise R1*
+
+Create a histogram of the age variable, using a binwidth you think reasonable. 
+
+```{r include = FALSE}
+ggplot(sbp, aes(age)) +
+    geom_histogram(binwidth = 10)
+```
+
+\newpage  
+
+### ~ A grouping interlude ~
+
+Groups and faceting in ggplot are really important and useful across a variety of plots, so we'll look at how to do that now with histograms; the same ideas serve the same purpose across any type of ggplot.   
+
+#### Groups
+
+The `group = ` aesthetic can be used to separate data based on a factor. However, it doesn't automatically color the groups differently. Using `color` and/or `fill` provides different colors for the groups, so in some cases, `group` can be redundant.  
+
+##### Comparative density plots
+
+It's fairly difficult to overlay two histograms and get a comparative sense for the distribution of two (or more) groups, but density plots with a suitable alpha value can work. (Strictly speaking, `group = smoke` is unnecessary here; the groupings will occur anyway based on `fill` being assigned to a factor.)  
+
+```{r fig.height = 2.75, fig.width = 5.25, fig.align="center"}
+# Comparative density plot
+ggplot(sbp, aes(x = sbp, group = smoke, fill = smoke)) +
+    geom_density(alpha = 0.5) 
+```
+
+
+#### Facets
+
+Facets break up your plots by a conditioning variable, so that each panel within the plot is a subset of the numeric variable.
+
+##### Faceting histograms
+
+The function `facet_wrap` provides a way to facet on a single variable.  
+
+```{r fig.height = 3, fig.width = 4, fig.align="center"}
+# Faceted histograms plots
+ggplot(sbp, aes(sbp)) +
+    geom_histogram(color = "gray80", binwidth = 10)  +
+    facet_wrap( ~ smoke, ncol = 1) # try ncol = 2 to see what happens
+```
+
+
+#### Groups and facets: multiple factor comparative density plots
+
+Creating a comparative density plot using both groups and facets can allow for multiple variable comparisons, e.g.,  
+
+```{r fig.width = 4.25, fig.height = 4.25, fig.align="center"}
+ggplot(sbp, aes(x = sbp, fill = smoke)) +
+    geom_density(alpha = 0.4) +
+    facet_wrap(~ chldbear, ncol = 1) +
+    # Note: this removes y-axis ticks and text
+    theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+```
+
+This can be extended with `facet_grid`, which allows you to facet on two variables instead of one (rows/columns are set by the number of factor classes):  
+
+```{r fig.height = 3.25, fig.align="center"}
+ggplot(sbp, aes(x = sbp, fill = smoke)) +
+    geom_density(alpha = 0.4) +
+    facet_grid(married ~ chldbear) +
+    theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+```
+
+\  
+\  
+
+***  
+
+##### *Exercise R2*
+
+1. Create histograms of the age variable with 10 year bin widths, faceting smoke against stress. (*Extra credit*: color the bar (out)lines black.)
+
+```{r include = FALSE}
+ggplot(sbp, aes(age)) +
+    geom_histogram(binwidth = 10, color = "black") +
+    facet_grid(trt ~ income)
+```
+
+***
+
+\newpage  
+
+### Bar and dot plots
+
+The basic `ggplot2` function for the distribution of categorical variables is `geom_bar`:   
+
+```{r fig.width = 4, fig.height = 2.5, fig.align="center"}
+# Barplot
+ggplot(sbp, aes(x = exercise)) +
+    geom_bar()
+```
+
+Dot (or lollipop) plots are becoming more common as a replacement for bar charts. Best practice is to include a line from the point to the axis, which in ggplot is accomplished with a very skinny `geom_bar` plotted before a `geom_point`, so that the point covers the end of the bar.  
+
+And, we can turn it (or any other ggplot) sideways with `coord_flip()`: 
+
+```{r fig.width = 4, fig.height = 2.5, fig.align="center"}
+# Dot plot
+# Note the use of y = ..count.. and stat = "count"
+ggplot(sbp, aes(x = exercise, y = ..count..)) +
+    # This makes the stem
+    geom_bar(stat = "count", width = 0.02) +
+    # This makes the dot
+    geom_point(stat = "count") + 
+    coord_flip() +
+    xlab("Exercise Category") +
+    ylab("Count")
+```
+
+
+#### Ordering bar/dot plots by a ranking
+
+Let's say we want a dot plot ordered by count, from top to bottom, and we wanted to have labels instead of numbers for the `exercise` variable.  
+
+We need to load the forcats library (help FOR CATegorical variableS) first: 
+
+```{r}
+library(forcats)
+```
+
+We need to create some useful labels for this data, so we'll create an ordered factor for `exercise`. 
+
+```{r}
+# Keep the original data, create new ordered factor with labels for exercise 
+sbp$Exercise = ordered(ifelse(sbp$exercise == 1, "Low",
+                        ifelse(sbp$exercise == 2, "Medium", 
+                          ifelse(sbp$exercise == 3, "High", NA))),
+                        levels = c("Low", "Medium", "High"))
+```
+
+Now we can create the ordered dot plot, using two functions in the `forcats` package. 
+
+```{r fig.width = 4, fig.height = 2.5, fig.align="center"}
+# Dot plot with values ordered by count, from top
+# fct_infreq orders groups by their count, ascending
+# fct_rev reverses the order so higher #s are on top 
+ggplot(sbp, aes(x = fct_rev(fct_infreq(Exercise)), y = ..count..)) +
+    geom_bar(stat = "count", width = 0.02) +
+    geom_point(stat = "count", size = 4, color = "steelblue") + 
+    coord_flip() +
+    xlab("Exercise Category") +
+    ylab("Count")
+```
+
+\  
+\  
+
+***  
+
+##### *Exercise R3*
+
+1. Create a dot plot of the `stress` variable (Extra credit: order it so the largest group is on top). 
+
+```{r include = FALSE}
+ggplot(sbp, aes(x = fct_rev(fct_infreq(stress)), y = ..count..)) +
+    geom_bar(stat = "count", width = 0.02) +
+    geom_point(stat = "count", size = 4, color = "darkblue") + 
+    coord_flip() 
+```
+
+***
+
+\newpage  
+
+### Boxplots and violin plots
+
+Boxplots are the traditional way to display several distributions in a smaller space than is possible with histograms. 
+
+```{r fig.height=2.5, fig.width=5, fig.align="center"}
+# Boxplot
+ggplot(sbp, aes(x = Exercise, y = sbp)) +
+    geom_boxplot() 
+```
+
+You can use different grouping or fill aesthetics to make subgroupings:  
+
+```{r fig.height=3.5}
+# Boxplot with an additional grouping
+# The position_dodge width gives a little space between boxes
+ggplot(sbp, aes(x = Exercise, y = sbp, fill = trt)) +
+    geom_boxplot(position = position_dodge(width = 0.85)) 
+```
+
+Violin plots are simply sideways density histograms, and are sometimes preferred to boxplots if you want a more "objective" view of the data. You can add reference lines (say, the quantiles? or any percentile you want) with the `draw_quantiles` option.  
+
+```{r fig.height=4}
+ggplot(sbp, aes(x = Exercise, y = sbp, fill = trt)) +
+    geom_violin(position = position_dodge(width = 0.85), 
+              draw_quantiles = c(0.25, 0.50, 0.75)) 
+```
+
+\  
+\  
+
+***  
+
+##### *Exercise R4*
+
+Create a sideways boxplot plot of the `weight` variable, grouped by the `married` and `trt` variables. (Don't forget to `dodge`!)
+
+```{r include = FALSE}
+ggplot(sbp, aes(x = married, y = weight, fill = trt)) +
+    geom_boxplot(position = position_dodge(width = 0.85))
+    coord_flip() 
+```
+
+Make that into a violin plot, and include the 25/50/75 quantiles. Do you get the same "implication" from the result as with the boxplot version of the same data?
+
+```{r include = FALSE}
+ggplot(sbp, aes(x = married, y = weight, fill = trt)) +
+    geom_violin(position = position_dodge(width = 0.85), 
+              draw_quantiles = c(0.25, 0.5, 0.75))
+    coord_flip() 
+```
+
+***
+
+\newpage  
+
+### Scatterplots
+
+The classic plot for numeric/numeric comparisons is the scatterplot. `geom_point` provides the geometry.  
+
+Like everything else in ggplot, you can group, color, facet, change transparency (`alpha`), and so on to get a look you want. 
+
+```{r fig.height = 3.75, fig.width = 5.25, fig.align="center"}
+# Scatterplot with grouping  
+ggplot(sbp, aes(x = weight, y = sbp, color = trt)) +
+    geom_point()
+```
+
+```{r fig.height = 3}
+# Scatterplot with grouping, facets, and transparency
+ggplot(sbp, aes(x = weight, y = sbp, color = trt)) +
+    geom_point(alpha = 0.75) +
+    facet_wrap(~ Exercise)
+```
+
+We can also use point size to add a fourth dimension to a scatterplot. (This will probably look better on your screen than it does on paper.)  
+
+```{r fig.height = 5, fig.align="center"}
+ggplot(sbp, aes(x = weight, y = sbp, color = trt)) +
+    geom_point(aes(size = age), alpha = 0.75) 
+```
+
+\  
+\  
+
+***  
+
+##### *Exercise R5*
+
+Create a scatterplot of `weight` and `bmi`. (Extra credit: color the points by `trt`.)  
+
+```{r include = FALSE}
+ggplot(sbp, aes(x = weight, y = bmi, color = trt)) +
+    geom_point() 
+```
+
+***
+
+\newpage  
+
+## Inference
+
+### Smoothers and trendlines
+
+You can add trend lines to scatterplots with `geom_smooth`. Providing no arguments to the `methods` options gives you a loess smoother with a 95% confidence interval.  
+
+```{r fig.height = 2.75, fig.align="center", message=FALSE, warning=FALSE}
+# Scatterplot with grouping, facets, transparency, and *loess* trends
+ggplot(sbp, aes(x = weight, y = sbp, color = trt)) +
+    geom_point(alpha = 0.75) +
+    geom_smooth() +
+    facet_wrap( ~ Exercise)
+```
+
+Using `method = "lm"` gives you a linear trend line.   
+
+```{r fig.height = 2.75, fig.align="center", message=FALSE, warning=FALSE}
+# Scatterplot with grouping, semi-transparent points, and *linear* trends
+ggplot(sbp, aes(x = weight, y = sbp, color = trt)) +
+    geom_point(alpha = 0.75) +
+    geom_smooth(method = "lm") +
+    facet_wrap(~ Exercise)
+```
+
+\  
+\  
+
+***   
+
+##### *Exercise R6*
+
+Create a scatterplot of `weight` and `bmi` with a linear trendline. (Extra credit: color the trendline darkred.)  
+
+```{r include = FALSE}
+ggplot(sbp, aes(x = weight, y = bmi)) +
+    geom_point() +
+    geom_smooth(method = "lm", color = "darkred") +
+    theme_bw()
+```
+
+***  
+
+
+### Mean and error-bar plots
+
+Many times, what we want to know comes down to "*how* much different, on average?" So plotting means (or medians) with confidence intervals are important plots to be able to create. 
+
+We'll use the `stat_summary` functions from ggplot to do this simply, using the normal distribution for the confidence intervals. 
+
+```{r fig.height=2.9, fig.width=4, fig.align="center"}
+# Mean and 95% CI
+ggplot(sbp, aes(Exercise, sbp)) + 
+    stat_summary(geom = "point", fun.y = mean) + 
+    stat_summary(geom = "errorbar", fun.data = mean_cl_normal, 
+                 width = 0.2)
+```
+
+You can get error bars of means/medians and confidence intervals, standard deviations (`mult`, defaults to 2), or quantiles with the `stat_summary` functions in a few different ways:  
+
+| Statistic | Interval Type | Function |
+| -------- | ------------------ | ------------------------------------ |
+| Mean | Bootstrapped CI | `(fun.data = mean_cl_boot, fun.args = list(conf.int=0.95), ...)` |
+| Mean | Normal CI | `(fun.data = mean_cl_normal, fun.args = list(conf.int=0.95), ...)` |
+| Mean | Standard deviation | `(fun.data = mean_sdl, fun.args = list(mult=2), ...)` |
+| Median | Quantile | `(fun.data = median_hilow, fun.args = list(conf.int=0.50), ...)` |
+
+As per usual, you can subset with `color` or `group`. `dodge`-ing the position of each layer gives some separation between groups.  
+
+```{r fig.height=3, fig.width=6, fig.align="center"}
+# Not run, cause the overlap makes it useless:
+# ggplot(sbp, aes(Exercise, sbp, color = trt)) + 
+#    stat_summary(fun.y = mean, geom = "point") + 
+#    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2)
+
+# This is what we want, note the "position" arguments
+ggplot(sbp, aes(exercise, sbp, color = trt)) + 
+    stat_summary(fun.y = mean, geom = "point", 
+                 position = position_dodge(width = 0.2)) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", 
+                 width = 0.2, position = position_dodge(width = 0.2))
+```
+
+(Using error bars with bar charts for means and CIs---aka "dynamite plots"---is considered poor practice; I have it first hand from an NIH grant reviewer that proposals have been dinged for using them.)
+
+***  
+
+##### *Exercise R7* (optional)
+
+Create a mean + CI plot plot of the `height` variable, grouped by the `gender` variable and colored by the `trt` variable. (Don't forget to `dodge`!)
+
+```{r include = FALSE}
+ggplot(sbp, aes(gender, height, color = trt)) + 
+    stat_summary(fun.y = mean, geom = "point", 
+                 position = position_dodge(width = 0.2)) + 
+    stat_summary(fun.data = mean_cl_normal, geom = "errorbar", 
+                 width = 0.2, position = position_dodge(width = 0.2))
+```
+
+***
+
+\newpage  
+
+### All-in-one plots: `ggpairs`
+
+There are a ton of ggplot extension packages built by others. One particularly useful one is `GGally`.  
+
+The power of `GGally`'s `ggpairs` is in being able to compare a variety of different types of variables all at once, so it's an incredibly useful tool for EDA work. Using the `mapping` option allows you to provide ggplot-based aesthetics, or you can add custom functions to apply different aesthetics to different plots ([see the `GGally` page for some examples](http://ggobi.github.io/ggally/#ggallyggpairs)).  
+
+```{r cache = TRUE, fig.height = 6, message=FALSE, warning=FALSE}
+# The GGally package contains the ggplot version of "pairs" 
+library(GGally)
+
+# We'll just use a subset of the variables
+ggpairs(data = sbp[c(4:8, 12)], mapping = aes(color = trt, alpha = 0.5))
+```
+
+\newpage
+
+## Labels: Titles, axes, and legends
+
+There are several ways to modify labels, legend names, and titles. We don't have time to get into legend customization (which is closely related to scale customization) today, so we'll just look at modifying its title (this section) and position (next section). 
+
+Titles and axis labels can be done separately or together (in a call to `labs`, i.e., labels). So these two code chunks accomplish the same thing (only one plot shown here): 
+
+```{r eval = FALSE}
+ggplot(sbp, aes(x = weight, y = sbp, color = trt)) +
+    geom_point(alpha = 0.75) +
+    labs(x = "Weight (lbs)", y = "Systolic Blood Pressure (mmHg)", 
+       title = "Hello, world!", subtitle = "Are you lookin' at me?!?")
+
+ggplot(sbp, aes(x = weight, y = sbp, color = trt)) +
+    geom_point(alpha = 0.75) +
+    xlab("Weight (lbs)") +
+    ylab("Systolic Blood Pressure (mmHg)") +  
+    ggtitle(label = "Hello, world!", subtitle = "Are you lookin' at me?!?")
+```
+
+```{r fig.height=4, fig.width=6, fig.align="center", echo = FALSE}
+ggplot(sbp, aes(x = weight, y = sbp, color = trt)) +
+    geom_point(alpha = 0.75) +
+    labs(x = "Weight (lbs)", y = "Systolic Blood Pressure (mmHg)", 
+       title = "Hello, world!", subtitle = "Are you lookin' at me?!?")
+```
+
+The legend title is easy to modify using the call to `labs` with `color` and/or `fill`, depending on what you've used: 
+
+```{r fig.height=3.4, fig.width=6, fig.align="center"}
+ggplot(sbp, aes(x = weight, y = sbp, color = trt)) +
+    geom_point(alpha = 0.75) +
+    labs(x = "Weight (lbs)", y = "Systolic Blood Pressure (mmHg)", 
+       title = "Hello, world!", color = "Treatment\nGroup")
+```
+
+Finally, having variables or observation values already named as you'd like them to appear in the graph is the easiest way to ensure your (one-word) labels appear how you want them to be. For example,  
+
+```{r}
+# Create a new variable with human-readable values
+sbp$Treatment = ifelse(sbp$trt == 0, "Control", "Treatment")
+```
+
+And then plot using the new variable:  
+
+```{r fig.height=3.4, fig.width=6, fig.align="center"}
+ggplot(sbp, aes(x = weight, y = sbp, color = Treatment)) +
+    geom_point(alpha = 0.75) +
+    labs(x = "Weight (lbs)", y = "Systolic Blood Pressure (mmHg)", 
+       title = "Hello, world!", color = "Treatment\nGroup")
+```
+
+
+## Themes
+
+There are a few [built-in themes](http://r4ds.had.co.nz/images/visualization-themes.png) in ggplot that provide an overall feel to the graph without needing to resort to custom coding. 
+
+You add them just as you would a layer, e.g., 
+
+```{r fig.height=2.5, fig.width=4, fig.align="center"}
+ggplot(sbp, aes(x = weight, y = sbp, color = Treatment)) +
+    geom_point(alpha = 0.75) +
+    labs(x = "Weight (lbs)", y = "Systolic Blood\nPressure (mmHg)", 
+       title = "Hello, world!", color = "Treatment\nGroup") +
+    theme_bw()
+```
+
+The `theme` function has a huge number of options that allow you to customize any design aspects of the plot. To move the legend around, you can use it this way:
+
+```{r fig.height=3.2, fig.width=3.5, fig.align="center"}
+ggplot(sbp, aes(x = weight, y = sbp, color = Treatment)) +
+    geom_point(alpha = 0.75) +
+    labs(x = "Weight (lbs)", y = "Systolic Blood\nPressure (mmHg)", 
+       title = "Hello, world!", color = "Treatment Group") +
+    theme_bw() +
+    theme(legend.position = "bottom")
+```
+
+As another example of the `theme` use, the y-axis on density plots is irrelevant; we can remove those by using the `element_blank()` option:
+
+```{r fig.height=3.5, fig.width=5, fig.align="center"}
+ggplot(sbp, aes(sbp, fill = Treatment)) +
+    geom_density(alpha = 0.4) +
+    labs(x = "Systolic Blood Pressure (mmHg)", y = "Relative Frequency", 
+       fill = "Treatment Group: ") +
+    theme_bw() +
+    theme(axis.ticks.y = element_blank(), axis.text.y = element_blank(),
+        legend.position = "top")
+```
+
+**Note**: you usually want the `theme` line *last* in the ggplot build series; that's because, for example, if you put `theme_bw()` after a custom `theme`, the `theme_bw()` values will overwrite your custom designations. 
+
+***  
+
+##### *Exercise R8*
+
+Using the `bmi` as described by `weight` scatterplot from exercise R6, play with the different built-in themes (found here: [http://r4ds.had.co.nz/images/visualization-themes.png](http://r4ds.had.co.nz/images/visualization-themes.png)) to find one you like.   
+
+```{r include = FALSE}
+ggplot(sbp, aes(x = weight, y = bmi)) +
+    geom_point() +
+    geom_smooth(method = "lm", color = "darkred") +
+    theme_bw()
+```
+
+***
+
+## Saving ggplots
+
+We can save a publication-ready/hi-res plot with `ggsave`, which saves the current plot. You can save *any* ggplot that's in the environment by specifying its name in the `plot` option, e.g.:
+
+```{r eval=FALSE}
+# Create a ggplot object instead of plotting it directly
+pressure_plot = ggplot(pressure, aes(temperature, pressure)) +
+    geom_point(color = "blue")
+
+# This will appear in your current working directory; use getwd() if needed
+ggsave(filename = "under_pressure.png", plot = pressure_plot, dpi = 600, width = 4.5, 
+    height = 2.5, units = "in")
+```
+
+\newpage   
+
+## *~ We now return you to our regularly-scheduled theoretical discussion[^2] ~*
+
+[^2]: This section, and the next one, are lifted pretty much straight outta Wickham's book. Hey, it's a workshop, not a *Nature* pub! 
+
+This is the basic philosophy that underlies `ggplot2`: a statistics plot links raw data---the words---to the aesthetic attributes (color, shape, size) of geometric objects (points, lines, areas) in space (direction, proximity)---the grammar. 
+
+All plots are composed of:  
+
+- **Data** that you want to visualise and a set of aesthetic mappings describing how variables in the data are mapped to aesthetic attributes that you can perceive.
+- **Layers** made up of geometric elements and statistical transformation. Geometric objects, **geom**s for short (`geom_`), represent what you actually see on the plot: points, lines, polygons, etc. Statistical transformations, **stat**s for short (`stat_`), summarise data in many useful ways. For example, binning and counting observations to create a histogram, or summarising a 2d relationship with a linear model.
+- The **scale**s map values in the data space to values in an aesthetic space, whether it be colour, or size, or shape. Scales draw a legend or axes, which provide an inverse mapping to make it possible to read the original data values from the plot.
+- A coordinate system, **coord** for short, describes how data coordinates are mapped to the plane of the graphic. It also provides axes and gridlines to make it possible to read the graph. We normally use a Cartesian coordinate system, but a number of others are available, including polar coordinates and map projections.
+- A **facet**ing specification describes how to break up the data into subsets and how to display those subsets as small multiples. This is also known as conditioning or latticing/trellising.
+- A **theme** which controls the finer points of display, like the font size and background colour. While the defaults in ggplot2 have been chosen with care, you may need to consult other references to create an attractive plot.  
+
+
+## The main features of a `ggplot2` graphic
+
+Every ggplot2 plot has three key components:  
+
+1. **data**,
+2. A set of **aesthetic** mappings between variables in the data and visual
+properties, and 
+3. At least one **layer** which describes how to render each observation. Layers
+are usually created with a `geom` function.  
+
+So, revisting the code for the ggplot above, 
+
+```
+ggplot(pressure, aes(temperature, pressure)) +
+    geom_point()
+```
+
+creates a scatterplot defined by:  
+
+1. Data: the `pressure` data frame.
+2. Aesthetic mapping: `temperature` mapped to x position, `pressure` to y
+position. (In `ggplot2`, the first two items in the `aes` will always be mapped to x and y if not otherwise specified. That's why leaving out `x = ` and `y = ` still works.)
+3. Layer: points.
+
+### Data
+
+`ggplot2` (and `lattice`) needs data in *long format* to operate. Since actually looking at data in long format (right side of the graph below) is inconvenient and can obscure patterns across experimental groupings, researchers often have their data in wide format (left side). The datasets we're working with in this workshop are all already in the format we need, but it's an important thing to remember.  
+    
+```{r echo = FALSE}
+knitr::include_graphics("http://www.datasciencemadesimple.com/wp-content/uploads/2017/04/Reshape-in-R-from-wide-to-long-768x142.png")
+```
+
+### Aesthetic mapping
+
+The `aes` designation is fundamental to how you want your plot to look---not simply in axis designation, but also in terms of any aesthetic modification you want to build. Common aesthetics are `color`, `fill`, `alpha`, `size`, `linetype`, and `shape`; and for text you also have oft-used options for `fontface`, `family`, `angle`, `hjust`, and `vjust`. 
+
+**Colors** in `ggplot2` for variables are generated automatically for categories by moving around the color wheel based on the number of factors. The default for continuous data is a blue color ramp. Colors can also be specified as constants. The built-in color numbers/names available to R and `ggplot2` can be found at [http://research.stowers.org/mcm/efg/R/Color/Chart/ColorChart.pdf](http://research.stowers.org/mcm/efg/R/Color/Chart/ColorChart.pdf). However, you can always specify the hex code for any color; a great place to find complementary colors is [http://colorbrewer2.org](http://colorbrewer2.org). 
+
+**Size** in `ggplot2` is specified in mm, not points. So for example, 8 point font would be `size = 2.8`; the conversion is 1 point = 0.3528 mm. The default value is 5. 
+
+The default **point shape** is `pch = 19`, the small, filled circle from `base` R, and its default size is 1.5 mm. For geoms that can have fill and border colors, `color` is used for the border and `fill` is used to fill the inside. 
+
+The default **line type** is solid, and its default size is 0.5 mm. You can see the main points and linetypes at [http://www.cookbook-r.com/Graphs/Shapes_and_line_types/](http://www.cookbook-r.com/Graphs/Shapes_and_line_types/).  
+
+The `alpha` option provides the level of transparency for any plot item, where 1 = opaque and 0 = fully transparent. 
+
+***IMPORTANT:*** *What you put inside `aes` can matter as much as what you put outside*. 
+
+What does that mean? Well, consider these four code sets that change where the `color`[^3] option is placed with respect to `aes`:  
+
+[^3]: `ggplot2` can use both American (e.g., `color`) and British (e.g., `colour`) spellings. 
+
+```{r eval = FALSE}
+ggplot(pressure, aes(temperature, pressure), color = "blue") +
+    geom_point()
+
+ggplot(pressure, aes(temperature, pressure, color = "blue")) +
+    geom_point()
+
+ggplot(pressure, aes(temperature, pressure)) +
+    geom_point(aes(color = "blue"))
+
+ggplot(pressure, aes(temperature, pressure)) +
+    geom_point(color = "blue")
+```
+
+
+```{r echo = FALSE, fig.height = 2.75}
+p1 = ggplot(pressure, aes(temperature, pressure), color = blue) +
+  geom_point()
+
+p2 = ggplot(pressure, aes(temperature, pressure, color = "blue")) +
+  geom_point()
+
+p3 = ggplot(pressure, aes(temperature, pressure)) +
+  geom_point(aes(color = "blue"))
+
+p4 = ggplot(pressure, aes(temperature, pressure)) +
+  geom_point(color = "blue")
+
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+The reason that only the last one worked like you might have expected is because `aes` expects variables in the data, or statistical transformations of that data, not actual colors, shapes, or sizes. 
+
+Let's add a (meaningless) grouping variable to this data to show the difference. 
+
+```{r eval = FALSE}
+pressure$fake_grouping = rep(c(A:D), times = c(5, 5, 5, 4))
+
+ggplot(pressure, aes(temperature, pressure), color = fake_grouping) +
+    geom_point()
+
+ggplot(pressure, aes(temperature, pressure, color = fake_grouping)) +
+    geom_point()
+
+ggplot(pressure, aes(temperature, pressure)) +
+    geom_point(aes(color = fake_grouping))
+
+ggplot(pressure, aes(temperature, pressure)) +
+    geom_point(color = "blue")
+```
+
+
+```{r echo = FALSE, fig.height = 3.1}
+pressure$fake_grouping = rep(c(LETTERS[1:4]), times = c(5, 5, 5, 4))
+
+p1 = ggplot(pressure, aes(temperature, pressure), color = fake_grouping) +
+  geom_point()
+
+p2 = ggplot(pressure, aes(temperature, pressure, color = fake_grouping)) +
+  geom_point()
+
+p3 = ggplot(pressure, aes(temperature, pressure)) +
+  geom_point(aes(color = fake_grouping))
+
+p4 = ggplot(pressure, aes(temperature, pressure)) +
+  geom_point(color = "blue")
+
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+
+In short: 
+
+- An aesthetic inside `aes` is mapped from the data, and a legend is created from it.
+- An aesthetic is set to a single value if you define it outside `aes`.
+
+### Layers
+
+Custom control of `ggplot2` outputs with more than one layer come when you have the aesthetics *inside* the layer(s) instead of as a global aesthetic. 
+
+Below, we're just adding a line layer to the pressure plot. These also show how `ggplot2` layers things: stuff you want on top should go in the code *after* things you want plotted *below* it in the graphic. 
+
+```{r eval = FALSE}
+ggplot(pressure, aes(temperature, pressure, color = fake_grouping)) +
+    geom_point() +
+    geom_line()
+
+ggplot(pressure, aes(temperature, pressure)) +
+    geom_point(aes(color = fake_grouping)) +
+    geom_line(aes(color = temperature))
+
+ggplot(pressure, aes(temperature, pressure)) +
+    geom_point(color = "blue") +
+    geom_line(color = "red")
+
+ggplot(pressure, aes(temperature, pressure)) +
+    geom_line(color = "red") +
+    geom_point(color = "blue")
+```
+
+
+```{r echo = FALSE, fig.height = 4}
+p1 = ggplot(pressure, aes(temperature, pressure, color = fake_grouping)) +
+  geom_point() +
+  geom_line()
+
+p2 = ggplot(pressure, aes(temperature, pressure)) +
+  geom_point(aes(color = fake_grouping)) +
+  geom_line(aes(color = temperature < 300))
+
+p3 = ggplot(pressure, aes(temperature, pressure)) +
+  geom_point(color = "blue") +
+  geom_line(color = "darkred")
+
+p4 = ggplot(pressure, aes(temperature, pressure)) +
+  geom_point(color = "blue") +
+  geom_line(color = "darkred")
+
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+## Pieces of the plot
+
+ggplots are infinitely customizable, but can be infinitely complicated, too! Here's a sense for some of the major things you can mess with:
+
+```{r echo = FALSE}
+knitr::include_graphics("http://sape.inf.usi.ch/sites/default/files/imagecache/width600/ggplot2-anatomy-all-annotated.png")
+```
+
+## What's next?
+
+The power of having a coherent philosophy means that you can generalize from the basics into an almost infinite set of possibilities using the same functions and options. `base` graphics are sometimes called a "collection of special cases," which can make customizing plots quite difficult. As a result, more and more R packages are setting up their `base`-oriented plotting functions to also include ggplot-based ones. The `autoplot` function in `ggplot2` provides the one-stop bridge between those, where available. For example,
+
+```{r fig.height=3}
+library(forecast)
+plot(forecast(airmiles))
+```
+
+```{r fig.height=2.75}
+autoplot(forecast(airmiles))
+```
+
+As for developing skills in ggplot, nothing is better than having a use case! Wickham's *ggplot2* book (second ed), provided with this workshop as a pdf, is pretty comprehensive but isn't the easiest reference to hit when you're just trying to accomplish something specific. Other than the ole Google+Stack Overflow trick, two useful reference webpages can be very helpful: 
+[http://r4ds.had.co.nz/visualize.html](http://r4ds.had.co.nz/visualize.html) provides a succinct summary of the Grammar of Graphics philosophy and its application in `ggplot2`, and the extensive documentation outside of the `man` pages available at [http://ggplot2.tidyverse.org/reference/](http://ggplot2.tidyverse.org/reference/) can also help you hone in on each function's options and uses. 
+
+A great reference for simple, cookbook style recipies for ggplot is at [http://www.cookbook-r.com/Graphs](http://www.cookbook-r.com/Graphs/). The `ggplot2` cheat sheet---as well as many other useful R cheat sheets---can be found at [https://www.rstudio.com/resources/cheatsheets/](https://www.rstudio.com/resources/cheatsheets/). 
+
+***  
+
+\newpage
+
+## Homework  
+
+Using the `dropData` dataset from the `plottingCourseData` package on *ratchet*, try to reproduce this figure as closely as you can. Notice the reference line at y=2944 that demarcates positive from negative droplets.
+
+```{r echo=FALSE}
+knitr::include_graphics("~/Documents/R/pcr_example_plot.png")
+```
+
+
+Use the following code snippet to subset your data into a workable dataset and start your plot. A couple of ggplot functions we did not cover today but will get you closer to this graph include `guides` and a couple of different `scale_` functions (start typing `?scale_` and see what comes up; hint: `scale_color_manual` and `scale_x_continuous` are two that I used to create this plot, though others are possible). Otherwise, you may take whatever steps you think are appropriate to generate the plot.
+
+```{r eval=FALSE}
+pcr_subset = dropData[grep("01",dropData$Well),]
+
+ggplot(pcr_subset, aes(Fraction, Amplitude)) +
+    geom_point() +
+    facet_wrap(~ Template)
+```
+
+```{r, eval=FALSE, echo=FALSE, fig.height=4, fig.width=8, message=FALSE, warning=FALSE}
+
+# For ggplot, it's probably easier to create an indicator column
+subset$Primer_Legend = factor(
+  ifelse(subset$Amplitude <= 2944, "Negative",
+    ifelse((subset$Primer == "900nM" & subset$Amplitude > 2944), "900nM",
+      ifelse((subset$Primer == "45nM" & subset$Amplitude > 2944), "45nM", NA))))
+
+# Now plot using the indicator column for the legend              
+ggplot(subset, aes(Fraction, Amplitude, color = Primer_Legend)) +
+    geom_point(shape = 20, size = 1, alpha = 0.5) +
+    geom_hline(yintercept = 2944, aes(color = "gray30"), linetype = "dashed") +
+    facet_wrap(~Template, nrow = 1) +
+    scale_x_continuous(breaks = c(0, 0.5, 1)) +
+    scale_color_manual(name = "", values = c("green4", "blue4", "gray50")) +
+    guides(color = guide_legend(override.aes = list(alpha = 1, size = 3))) +
+    xlab("Relative Droplet Count") +
+    ylab("Amplitude (FAM)") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45), aspect.ratio = 1.5)
+```
+
+***  
+
+*~ End of file ~* 
