@@ -1,0 +1,940 @@
+---
+title: "Statistical Literacy for Biologists: Week 2, Part 2\n Bivariate EDA"
+author: "Dwight Barry"
+date: "6 October 2017"
+output:
+  pdf_document: 
+    toc: yes
+  html_document: default
+---
+
+\  
+\  
+
+***  
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.height = 3, fig.align = "center")
+
+library(knitr)       # for adding image files to this pdf
+
+# install.packages("GGally", "ggridges", "grid", "gridExtra", "htmlTable", "htmlwidgets", "pairsD3", "parcoords", "rgl", "scales", "tabplot", "vcd", "VIM", dependencies = TRUE)
+# install.packages("MatrixModels", dependencies = TRUE)
+```
+
+Let's load the primary packages we'll use today:  
+
+```{r}
+library(psych)       # summary stats
+library(VIM)         # visualize missing data
+library(tidyverse)   # gpplot, dplyr, and tidyr packages
+library(forcats)     # factor manipulation for tidy data
+library(scales)      # additional scales for ggplot axes
+library(GGally)      # scatter/bar/box/density plot matrix
+```
+
+
+We'll again use the Statistical Society of Canada's case study data we explored in Week 1.  
+
+```{r dataload, cache = TRUE}
+data(sbp, package = "sbpdata")
+```
+
+***  
+
+# Data Quality Check: Any missing, duplicate, or suspicious values?
+
+For the purposes of this course, we started in week 1 with univariate data exploration to get quickly into analysis with R, but in reality you should do some basic quality checks of your data at the very start---specifically, explore missing data, duplicated rows, or suspicious values.  
+
+We'll create a second data set from the original, and mess with it a little to show what this might look like. 
+
+```{r}
+# Create new data frame from actual data
+bad_sbp = sbp
+
+# Create about 15% NAs scattered around the new data frame
+set.seed(54)
+bad_sbp = as.data.frame(lapply(bad_sbp, function(cc) cc[sample(c(TRUE, NA), 
+                prob = c(0.85, 0.15), size = length(cc), replace = TRUE) ]))
+
+# Replace NAs with bad values in sbp and age
+bad_sbp$sbp[is.na(bad_sbp$sbp)] = sample(8:20, sum(is.na(bad_sbp$sbp)), replace = TRUE)
+bad_sbp$age[is.na(bad_sbp$age)] = sample(180:222, sum(is.na(bad_sbp$age)), replace = TRUE)
+
+# Make a bad factor variable
+bad_sbp$gender = sample(1:2, size = length(bad_sbp$Gender), replace = T, prob = c(0.30, 0.70))
+
+# Add a duplicate line (repeat row 72 on new row 501)
+bad_sbp[501, ] = bad_sbp[72, ]
+```
+
+\  
+
+The `multi.hist` function in the `psych` package is good for checking out whether a numeric variable has suspicious values. It also provides a theoretical normal distribution (dotted line) for direct comparison to the empirical distribution (dashed line, bars).   
+
+```{r fig.height=5}
+multi.hist(bad_sbp[ , sapply(bad_sbp, is.numeric)], nrow = 2, main = "")
+```
+
+\  
+
+The `base` package's `boxplot` function gives you a quick-and-dirty outlier "detection" plot---just be careful, because what constitutes an outlier is *completely dependent* on the specific context. Scaling and centering the data can help with interpretation, as well.  
+
+```{r fig.height = 4.75}
+# Using boxplot as-is also shows factors, and doesn't account for variables' ranges
+# Not run: boxplot(bad_sbp)
+
+# Scaled, centered, and only numeric variables
+boxplot(scale(bad_sbp[ , sapply(bad_sbp, is.numeric)]))
+```
+
+
+Rarely, factors don't convert like you'd expect (especially dates), so it's always worth double-checking to ensure that the original variable and the new variable line up exactly.  
+
+```{r}
+# Looking for all zeros on one diagonal
+table(bad_sbp$Gender, bad_sbp$gender)
+```
+
+You can read through unique values in a variable with the `unique` function; using it with `sort` can help you identify outliers/bad values.  
+
+```{r}
+sort(unique(bad_sbp$age))
+```
+
+The `duplicated` function finds duplicate rows for you; use it twice, with an OR operator and the `fromLast` option, to get all duplicate rows. 
+
+```{r}
+bad_sbp[duplicated(bad_sbp) | duplicated(bad_sbp, fromLast = TRUE), ]
+```
+
+The `VIM` package has a simple way to visualize missing values (and relative values) across the entire data frame.  
+
+```{r, fig.height = 5.5, fig.width = 8}
+matrixplot(bad_sbp)
+```
+
+\  
+
+You can also test for NAs over all columns in the data frame with: 
+```{r}
+apply(bad_sbp, 2, function(x) any(is.na(x)))
+```
+
+\  
+
+If your data is large and you often have missing values, the `VIM` package provides several other missing-data visualization tools that are worth exploring further.  
+
+\newpage  
+
+The `tabplot` package allows for an overall visualization of your data, which is sorted by the first column by default. Here we will just use a subset of the columns from the `bad_sbp` data for illustration, sorted by `bmi`:  
+
+```{r fig.height = 5, fig.width = 6.5}
+tabplot::tableplot(bad_sbp[ , c(1, 3, 5, 8:9)], pals = list("Paired"), sortCol = bmi)
+```
+
+\  
+
+We'll delete the messed-up data now so it doesn't get in our way.  
+
+```{r}
+rm(bad_sbp)
+```
+
+\  
+\  
+
+***  
+
+#### Exercise 1
+
+1. Create a tableplot of the `sbp` data frame, sorted by the `Smoke` variable.    
+
+***  
+
+\newpage    
+
+# Visualizing Bivariate Relationships
+
+Having done some basic data quality checks (above) and some univariate EDA work (last week), we can now explore our variables conditioned on other variables, i.e., bi-/multi- variate relationships. Usually, two or three dimensions (sometimes four) can be visualized with a single plot. Matrix and/or interactive plots provide additional ways to compare 1-4 dimensions across several variables.  
+
+Before we look into the various ways to do this, let's remind ourselves why visualization is so much more important than summary statistics.
+
+```{r eval=FALSE}
+# Load the anscombe data and reshape into long form
+aq = reshape(anscombe, varying = TRUE, sep="", direction = "long", timevar = "seriesname")
+
+# Subset of the summary stats to the "Table 1" basics
+describeBy(aq$x, aq$seriesname, skew = F, mat = T, digits = 2)[ , c(2, 4:6)]
+describeBy(aq$y, aq$seriesname, skew = F, mat = T, digits = 2)[ , c(2, 4:6)]
+```
+
+```{r echo = FALSE, fig.height=2}
+aq = reshape(anscombe, varying = TRUE, sep="", direction = "long", timevar = "seriesname")
+
+# Table in handout
+t1 = describeBy(aq$x, aq$seriesname, skew = F, mat = T, digits = 2)[ , c(2, 4:6)]
+t2 = describeBy(aq$y, aq$seriesname, skew = F, mat = T, digits = 2)[ , c(2, 4:6)]
+
+library(gridExtra)
+grid.arrange(
+    tableGrob(t1, rows = NULL, cols = c("x variable", "n", "mean", "sd")),
+    tableGrob(t2, row = NULL, cols = c("y variable", "n", "mean", "sd")),
+    nrow = 1)
+```
+
+Each series is the same, right? Same *n*, same mean, same standard deviation for the *x* and *y* variables.  
+
+So let's *look* at the data:
+
+```{r fig.height=3.25, fig.width=4.25}
+ggplot(aq, aes(x, y)) +
+    geom_point() +
+    facet_wrap(~ seriesname)
+```
+
+[Anscombe's quartet](http://www.sjsu.edu/faculty/gerstman/StatPrimer/anscombe1973.pdf)[^1], as this dataset is called, was created specifically to make this point.  
+
+[^1]: See http://www.sjsu.edu/faculty/gerstman/StatPrimer/anscombe1973.pdf
+
+## Numeric/Categorical data
+
+The plots in this section are for when you have a numeric variable (e.g., weight) that you want to condition on a categorical variable (e.g., Treatment Group).
+
+### Comparative density plots
+
+It's fairly difficult to overlay two histograms to get a comparative sense for the two (or more) groups, but density plots with a suitable alpha value can do so. Use the `fill` option to break the shading of the distributions into groups.  
+
+```{r fig.height = 2.5, fig.width = 5.5}
+# Not run (run to see why histograms don't work well for this)
+# ggplot(sbp, aes(x = weight, fill = Treatment_Group)) +
+#    geom_histogram(alpha = 0.5) 
+
+# Comparative density plot
+ggplot(sbp, aes(x = weight, fill = Treatment_Group)) +
+    geom_density(alpha = 0.5) 
+```
+
+You can compare more than two groups, which is sometimes useful and sometimes not.  
+
+```{r fig.height = 2.5, fig.width = 5}
+# Comparative density plot with 3 groups
+ggplot(sbp, aes(x = weight, fill = Exercise)) +
+    geom_density(alpha = 0.5) 
+```
+
+### Faceting
+
+Facets break up your plots by a conditioning variable, so that each panel within the plot is a subset of the numeric variable.  
+
+```{r fig.height = 5.5, fig.width = 4}
+# Faceted combination histogram/density plots
+ggplot(sbp, aes(x = weight)) +
+    geom_histogram(aes(y = ..density..), color = "gray80", binwidth = 10) +
+    geom_density(color = "blue", fill = "blue", alpha = 0.2) +
+    facet_wrap(~ Exercise, ncol = 1) + 
+    ylab("") +
+    theme_bw() +
+    theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+```
+
+Creating a comparative density plot using facets can allow for multiple variable comparisons, e.g.,  
+
+```{r fig.width = 4.25, fig.height = 4}
+ggplot(sbp, aes(x = weight, fill = Treatment_Group)) +
+    geom_density(alpha = 0.4) +
+    facet_wrap(~ Exercise, ncol = 1) +
+    labs(x = "Weight (lbs)", y = "Exercise Level", fill = "Treatment\nGroup") +
+    theme_bw() + 
+    theme(axis.ticks.y = element_blank(), axis.text.y = element_blank()) 
+```
+
+
+### Boxplots
+
+Boxplots are compact summaries of distributions, and were traditionally heavily used because they were easy to construct either on paper or with basic analytic tools like spreadsheets. Boxplots can't replace density plots or histograms in EDA work, but are still very useful, especially in cases where you have a large number of categories you want to compare side-by-side. They're also usually more suitable for publication when you want to show comparative distributions across many groups, rather than having a bunch of histograms taking up too much page space.  
+
+We're specifiying that the numeric variable is the *y*-axis and the categorical one is on the *x*-axis, which is traditional for boxplots, but here we've also flipped the axes to promote an easier visual comparison across groups.   
+
+```{r fig.height = 2}
+# Boxplot
+ggplot(sbp, aes(x = Exercise, y = weight)) +
+    geom_boxplot() + 
+    coord_flip()
+```
+
+```{r, fig.height = 3}
+# Boxplot with an additional grouping
+ggplot(sbp, aes(x = Exercise, y = weight, fill = Treatment_Group)) +
+    # The position_dodge width gives a little space between boxes
+    geom_boxplot(position = position_dodge(width = 0.85)) + 
+    coord_flip() 
+```
+
+### Ridgeplots
+
+More modern "boxplots" can be density-based; the `ggridges` ggplot extension provides this ability (see `?geom_density_ridges` for details): 
+
+```{r fig.height = 3, message = FALSE}
+library(ggridges)
+ggplot(sbp, aes(x = weight, y = Exercise, fill = Treatment_Group)) +
+    # These options relate to distance b/w groups and trim length
+    geom_density_ridges2(scale = 1, rel_min_height = 0.01, alpha = 0.4) +
+    # This helps scale the curves relative to the plot space
+    scale_y_discrete(expand = c(0.025, 0.05))
+```
+
+### Violin plots
+
+Violin plots combine the layout of boxplots with the concept of density, but they can sometimes produce plots that look funny: like kazoos, as below, or worse---if you have to present to, say, a group of clinicians---genitalia. Use with caution. 
+
+```{r fig.height = 4}
+ggplot(sbp, aes(x = Exercise, y = weight, fill = Treatment_Group)) +
+    geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) + 
+    labs(x = "Weight (lbs)", y = "Exercise Level", fill = "Treatment\nGroup") +
+    coord_flip() 
+```
+
+\  
+\  
+
+***  
+
+#### Exercise 2
+ 
+1. Create a comparative density plot of the `bmi` variable (body mass index), using `Smoke` as the conditioning variable.  
+
+2. Create a boxplot or ridgeplot of the `bmi` variable, using `Smoke` and `Treatment_Group` as the conditioning variables.  
+ 
+***  
+
+\newpage  
+
+## Numeric/Numeric data
+
+### Scatterplots
+
+The classic plot for numeric/numeric comparisons is the scatterplot.  
+
+The `base` plot function automatically creates a scatterplot when you give it two numeric variables, and like `hist`, it's useful for a quick look at the data.  
+
+```{r fig.width = 3.5, fig.height = 3.65}
+plot(sbp$weight, sbp$sbp)
+```
+
+\  
+
+The ggplot version is pretty compact code-wise, and of course allows you to more easily control plot aesthetics.  
+
+```{r fig.height = 3.5, fig.width = 3.75}
+# Scatterplot
+ggplot(sbp, aes(weight, sbp)) +
+  geom_point()
+```
+
+```{r fig.height = 3.5, fig.width = 5.25}
+# Scatterplot with grouping
+ggplot(sbp, aes(weight, sbp, color = Treatment_Group)) +
+  geom_point()
+```
+
+\  
+
+You can add trend lines with `geom_smooth`:  
+
+```{r fig.height = 3.5, fig.width = 5.25}
+# Scatterplot with grouping, semi-transparent points, and loess trends
+ggplot(sbp, aes(weight, sbp, color = Treatment_Group)) +
+  geom_point(alpha = 0.75) +
+  geom_smooth()
+```
+
+\  
+
+We can also use point size to add a fourth dimension to a scatterplot.  
+
+```{r fig.height = 3.25, fig.width = 5.5}
+ggplot(sbp, aes(weight, sbp, color = Treatment_Group)) +
+  geom_point(aes(size = bmi), alpha = 0.75) +
+  scale_size_continuous(range = c(0.5, 3)) + # Change point size range
+  geom_smooth()
+```
+
+\  
+
+Things can start getting messy when plotting four dimensions, and even moving into a 3d plot doesn't really help. Later in this course we'll cover dimension reduction to deal with this issue, so that we can adequately visualize multiple dimensions in ways that advance our understanding of the data.  
+
+```{r eval = FALSE}
+rgl::plot3d(sbp$weight, sbp$sbp, sbp$bmi, radius = as.numeric(sbp$married) * 2, 
+      col = as.numeric(sbp$income) + 3, type = "s")
+```
+```{r echo = FALSE}
+include_graphics("rgl_3dscatter.png")
+```
+
+
+### Scatterplot Matrices
+
+The `pairs` function gives you a basic scatterplot matrix in `base` R. 
+
+```{r fig.height=3.75, fig.width=3.75}
+pairs(sbp[1:4])
+```
+
+\  
+
+The `ggscatmat` function in the `GGally` package works on numeric-only variables to show a scatterplot matrix with scatterplots on the lower side, densities on the diagonal, and correlations on the upper side (all by default; see the [`GGally` website](http://ggobi.github.io/ggally/index.html) for many more possibilities).  
+
+```{r fig.height=4.5, fig.width=5.5}
+ggscatmat(sbp, columns = c(1:4), color = "Treatment_Group", alpha = 0.5)
+```
+
+\  
+
+As with any ggplot, you can use facets to add additional "dimensions" to the data visualization. 
+
+```{r fig.height=2.5}
+# Facet wrap scatterplot matrix
+ggplot(sbp, aes(weight, sbp, color = Treatment_Group)) +
+  labs(x = "Weight", y = "Systolic Blood Pressure", color = "Treatment Group") +
+  geom_point(alpha = 0.5) +
+  facet_wrap( ~ Stress) 
+```
+
+\  
+
+You can use `facet_grid` to show scatterplots faceted by two or more categorical variables.  
+
+```{r fig.height = 3.75}
+# Facet grid scatterplot matrix
+ggplot(sbp, aes(weight, sbp, color = Treatment_Group)) +
+  labs(x = "Weight", y = "Systolic Blood Pressure", color = "Treatment Group") +
+  geom_point(alpha = 0.5) +
+  facet_grid(Gender ~ Stress) 
+```
+
+\  
+\  
+
+***  
+
+#### Exercise 3
+ 
+1. Create a scatterplot of `bmi` by `height`, colored by `Gender`. Include a loess smoother that is also colored by the grouping.   
+
+2. Create a scatterplot matrix showing weight by height, faceted by `Smoke` and `Income`, sized by `bmi`, and colored by `Treatment_Group`.  
+
+***  
+
+\newpage  
+
+## Categorical/Categorical data
+
+### Faceted barplots
+
+Of course, you can facet with categorical variables as well.  
+
+```{r fig.height = 2.75}
+ggplot(sbp, aes(Exercise)) +
+  geom_bar() +
+  facet_wrap(~ Treatment_Group, ncol = 1) + 
+  coord_flip()
+```
+
+\  
+
+You can also provide a conditioning variable, which stacks the groups.  
+
+```{r fig.height = 3.25}
+ggplot(sbp, aes(Exercise, fill = Smoke)) +
+  geom_bar() +
+  facet_wrap(~ Treatment_Group, ncol = 1) + 
+  coord_flip()
+```  
+
+\  
+
+Things get messy fast with three or more categories in a stacked bar chart, so it's usually best to break them out into a side-by-side comparison with facets. The `position = "dodge"` option gives you a little more space between the categories:  
+
+```{r fig.height = 2.75}
+ggplot(sbp, aes(Exercise, fill = Salt)) + 
+    geom_bar(position = "dodge", width = 0.9) + 
+    facet_wrap(~Treatment_Group, nrow = 1)
+```  
+
+### Stacked bar/percentage charts
+
+Occasionally you may be more interested in comparative proportions instead of counts. You can use `position = "fill"` to accomplish this, with the `scale_y_continuous` function to automagically make the axis show percentages.      
+
+```{r fig.height = 2.75}
+ggplot(sbp, aes(Income, fill = Salt)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = percent) +
+  facet_wrap(~ Treatment_Group, ncol = 1) +
+  coord_flip()
+```
+
+\newpage  
+
+#### What about pie charts? 
+
+For nearly all cases, a bar or dot chart will make it easier on the viewer to understand differences between categories. Here's one example of why, from one of the classic papers in data visualization [(*Cleveland & McGill 1984*)](http://info.slis.indiana.edu/~katy/S637-S11/cleveland84.pdf):  
+
+```{r echo = FALSE, fig.height = 2.75}
+Value = c(1.8, 2.0, 2.1, 2.4, 2.5)
+eye_and_pie = data.frame(Group = factor(c(LETTERS[1:5])), Value = Value,
+                         Percentage = (Value / sum(Value)) * 100)
+
+pie_chart = ggplot(eye_and_pie, aes(x = factor(1), fill = Group)) +
+  geom_bar(aes(y = Value), position = "fill", stat="identity", width = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_brewer("Groups", palette = "Blues") +
+  ggtitle("Pie") +
+  theme_void() +
+  theme(legend.position = "bottom", legend.title = element_text(size = 6), 
+        legend.text = element_text(size = 6), plot.title = element_text(size = 11)) 
+
+percent_bar_chart = ggplot(eye_and_pie, aes(x = factor(1), fill = Group)) +
+  geom_bar(aes(y = Value), position = "fill", stat = "identity") +
+  scale_y_continuous(labels = percent) +
+  scale_fill_brewer("Groups", palette = "Blues") +
+  labs(x = "", y = "Percent") +
+  ggtitle("Stacked\nBar") +
+  theme_void() +
+  theme(axis.text.x = element_blank(), axis.ticks = element_blank(), legend.position = "none",
+        plot.title = element_text(size = 11)) 
+
+bar_chart = ggplot(eye_and_pie, aes(x = Group, y = Value)) +
+  geom_bar(position = "dodge", stat = "identity", fill = "steelblue") +
+  labs(x = "", y = "") +
+  ggtitle("Bar") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 11))
+
+dot_plot = ggplot(eye_and_pie, aes(Group, Value)) +
+  geom_bar(stat = "identity", width = 0.025, fill = "black") +
+  geom_point(color = "steelblue", size = 4) +
+  labs(x = "", y = "") +
+  ggtitle("Dot") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 11))
+
+spacer = ggplot() + theme_void()
+
+grid.arrange(pie_chart, spacer, percent_bar_chart, spacer, bar_chart, spacer, dot_plot, nrow = 1, widths = c(0.33, 0.01, 0.1, 0.01, 0.27, 0.01, 0.27))
+```
+
+\  
+\  
+
+***  
+
+#### Exercise 4
+
+1. Create a bar plot of the `Education` variable, faceted by `Treatment_Group`.  
+
+*** 
+
+\newpage  
+
+### Mosaicplots
+
+Mosaicplots are visual representations of contingency tables, so unlike bar plots, both *x* and *y* dimensions have meaning. We'll use the `mosaicplot` function built into R to start.    
+
+```{r fig.height = 6, fig.width = 6}
+mosaicplot(~ Treatment_Group + Income, data = sbp, main = "")
+```
+
+\  
+
+Here is the data (as a cross-tab) for this mosaicplot, as counts (left) and proportions (right):  
+
+\  
+
+```{r echo = FALSE}
+library(gridExtra)
+library(grid)
+library(htmlTable)
+tab = tableGrob(addmargins(table(sbp$Income, sbp$Treatment_Group)))
+prop = tableGrob(txtRound(addmargins(prop.table(table(sbp$Income, sbp$Treatment_Group))), 2))
+
+grid.arrange(tab, prop, ncol = 2)
+```
+
+\      
+
+You can add more variables, but after 3 or 4 the plot usually becomes too muddled to interpret easily.  
+
+```{r fig.height = 5, fig.width = 5}
+mosaicplot(~ Treatment_Group + Income + Alcohol, data = sbp, main = "")
+```
+
+We can get a sense for whether a log-linear model would suggest independence/differences with the `shade = T` and `type = "deviance"` options (use `type = "pearson"` for $\chi^2$, ya know, if you're the kind of person who still likes to use the mirror reflector on your microscope ;-) ):  
+
+```{r fig.height = 5, fig.width = 5}
+mosaicplot(~ Treatment_Group + Income + Alcohol, data = sbp, shade = T, 
+           main = "", type = "deviance")
+```
+
+\  
+
+`ggplot2` has a mosaicplot extension, [`ggmosaic`](https://cran.r-project.org/web/packages/ggmosaic/index.html), but it's still a little buggy---as of this writing, the CRAN version is incompatible with the `psych` package, although the [dev version on GitHub](https://github.com/haleyjeppson/ggmosaic) has fixed this conflict.  
+
+### Mosaic plot matrix
+
+Categorical variables can be compared with the `pairs` function, once the `vcd` package is loaded.  
+
+```{r eval = FALSE}
+library(vcd)
+
+# For ease of plotting, we'll take a subset of the categorical variables
+sbp_table = table(sbp[ , 9:12])
+
+# Mosaic plot matrix
+pairs(sbp_table, highlighting = 2)
+```
+```{r echo = FALSE}
+include_graphics("vcd_pairs.png")
+```
+
+***  
+
+#### Exercise 5
+ 
+1. Create a mosaicplot of the `Gender`, `Married`, and `Alcohol` variables.  
+
+2. Change the order of variables to see possible changes in the visual  impression/interpretation of the plot.  
+
+***  
+
+\newpage  
+
+## Multiple measurement types
+
+### `ggpairs` matrix
+
+The power of `GGally`'s `ggpairs` is in being able to compare a variety of different types of variables all at once, so it's an incredibly useful tool for EDA work. Using the `mapping` option allows you to provide ggplot-based aesthetics, or you can add custom functions to apply aesthetics to different plots ([see the `GGally` page for some examples](http://ggobi.github.io/ggally/#ggallyggpairs)).  
+
+```{r fig.height = 6}
+ggpairs(sbp, columns = c(1:3, 8:9), mapping = aes(color = Treatment_Group, alpha = 0.5)) + 
+    theme_bw()
+```
+
+### `pairsD3` matrix
+
+Where you need to brush (select) on one plot and see what happens on other plots, `pairsD3` is one option that's fairly simple to use.    
+
+```{r eval = FALSE}
+# Interactive plot matrix (factors will be numeric)
+pairsD3::pairsD3(sbp[ , c(3, 5, 9, 12)], group = sbp$Treatment_Group, opacity = 0.7, 
+        tooltip = paste("Treatment Group: ", sbp$Treatment_Group,
+                        "<br>Exercise: ", sbp$Exercise,
+                        "<br>Age: ", sbp$age))
+```
+
+```{r echo = FALSE}
+include_graphics("pairsD3.png")
+```
+
+### Parallel coordinates 
+
+Parallel coordinates can be really useful for EDA what-if's, whether on before/after data or any variable where you want to explore "trajectories" of data patterns.
+
+```{r eval = FALSE}
+parcoords::parcoords(sbp[ , c(12, 1:2, 9:11)], brushMode = "1d-axes-multi", reorderable = T,
+          rownames = FALSE, color = list(colorBy = "Treatment_Group", colorScale = 
+                htmlwidgets::JS("d3.scale.category10()") ))
+```
+
+```{r echo = FALSE}
+include_graphics("parcoords.png")
+```
+
+### Tableplots 
+
+The `tabplot` function can also make comparisons conditional on a grouping; here, we can compare a few variables between Control and Treatment groups (see `?tableplot` for the huge variety of options available).   
+
+```{r fig.height = 3.75}
+tabplot::tableplot(sbp, select = c(1, 3, 6, 10), subset=Treatment_Group, 
+                   scales = "lin", nBins = 20)
+```
+
+\newpage  
+
+# Bivariate (conditional) Summary Stats
+
+Deriving summary statistics by different types of groupings is a huge (and error-prone) pain in spreadsheets, but it's a breeze in R. 
+
+### Numeric/categorical summaries
+
+We used `describe` in the `psych` package for univariate stats in Week 1. Its wonderful `describeBy` function allows you to condition any quantitative variable by any categorical variable quite easily.  
+
+```{r}
+describeBy(sbp$weight, sbp$Treatment_Group, skew = FALSE)
+```
+
+\  
+
+You can use more than one grouping variable by passing them to a list (which returns a list, so use `mat = TRUE` to have it returned as a matrix):  
+
+```{r}
+describeBy(sbp$weight, list(sbp$Treatment_Group, sbp$Income), mat = T, 
+           digits = 1, skew = FALSE)
+```
+
+\  
+
+You can show the results for all variables at once---but remember that if you don't specify that you only want the numeric variables' results, your categorical variables will also be returned (signified by `*`) and those summary statistics will be incorrect.  
+
+```{r}
+describeBy(sbp[ , sapply(sbp, is.numeric)], sbp$Treatment_Group, 
+           skew = FALSE)
+```
+
+
+### Numeric/numeric summaries
+
+Once again, `describeBy` helps us out. We can use hard-coded values to condition the summary stats:   
+
+```{r}
+describeBy(sbp$weight, sbp$sbp >= 140, skew = FALSE)
+```
+
+\  
+
+We can also pass functions to allow for soft-coded values, such as by breaking the groups at the 80% percentile:  
+
+```{r}
+describeBy(sbp$weight, sbp$sbp >= quantile(sbp$sbp, probs = 0.80), skew = FALSE)
+```
+
+\  
+
+And just as a reminder, it doesn't always have to have the ugly default R output (use the `mat = T` option):  
+
+```{r}
+kable_table = describeBy(sbp$weight, sbp$sbp >= quantile(sbp$sbp, probs = 0.80), 
+                  mat = T, IQR = TRUE, skew = FALSE, quant = c(0.25, 0.5, 0.75))
+
+knitr::kable(kable_table, digits = 1, row.names = FALSE)
+```
+
+### Categorical/categorical summaries
+
+The `xtabs` function is the workhorse here, which is easier to use with several variables than the `table` function. `ftable` flattens the result into a more nicely formatted table than the `xtabs` default:    
+
+```{r}
+# Not run because it's ugly
+# table(sbp$Income, sbp$Alcohol, sbp$Treatment_Group)
+# xtabs(~ Income + Alcohol + Treatment_Group, data = sbp)
+
+cross_tab = xtabs(~ Income + Alcohol + Treatment_Group, data = sbp)
+ftable(cross_tab)
+```
+
+You can wrap this with `addmargins` and `prop.table` as well:  
+
+```{r}
+# Wrapped in ftable to make it all one line
+ftable(addmargins(prop.table(xtabs(~ Income + Alcohol + Treatment_Group, data = sbp))))
+```
+
+***  
+
+#### Exercise 6
+
+1. Obtain summary statistics of the `height` variable by `Gender`.  
+
+2. Obtain summary statistics of the `sbp` variable by whether the `age` is above or below the 75th percentile.  
+
+3. Create a cross-tab table of `Education`, `Stress`, and `Treatment_Group`. Then make it into a flat table.  
+
+
+```{r divider, include=FALSE}
+################################################################################
+#### End of class                                                           ####
+################################################################################
+```
+
+\newpage
+
+### Homework: Bivariate EDA
+
+1. In Exercise 2, we created a conditional density plot of the `bmi` variable (systolic blood pressure), using `Smoke` as the conditioning variable. Now add a `Treatment_Group` facet to this plot.  
+
+```{r hw_1_answer, include = FALSE}
+# HW 1
+ggplot(sbp, aes(bmi, fill = Smoke)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~Treatment_Group, ncol = 1)
+```
+ 
+2. Also in Exercise 2, we created a boxplot of the `bmi` variable, using `Smoke` and `Treatment_Group` as the conditioning variables. For this question, swap the *x*-axis/fill assignments for `Smoke` and `Treatment_Group` to produce another boxplot to see what a change in conditioning does to the plot.  
+
+```{r hw_2_answer, include = FALSE}
+# HW 2
+
+# Plot from exercise 2
+ggplot(sbp, aes(Treatment_Group, bmi, fill = Smoke)) +
+  geom_boxplot(position = position_dodge(width = 0.85))
+
+# Homework
+ggplot(sbp, aes(Smoke, bmi, fill = Treatment_Group)) +
+  geom_boxplot(position = position_dodge(width = 0.85))
+```
+
+3. Create a scatterplot matrix showing the relationship between `weight` and `bmi`, colored by `Treatment_Group` with some alpha transparency on the points to make density/clusters more obvious, and faceted by both `Income` and `Education`. Bonus points: *Label both* variables in the facet strips (yes, that's a hint, try `?facet_grid` or The Google for ideas if you get stuck). Double bonus points: reorder the *y*-axis facet so that the diagonals match up, that is, low income and low education form the plot at the bottom left of the matrix.    
+
+```{r hw_3_answer, include = FALSE}
+# HW 3
+
+# Main answer
+ggplot(sbp, aes(x = weight, y = bmi, color = Treatment_Group)) +
+  geom_point(alpha = 0.7) +
+  facet_grid(Income ~ Education, labeller = label_both) +
+  theme_bw() 
+
+# Bonus points
+# You have to make a new factor, reversed (DON'T OVERWRITE THE OLD ONE!)
+sbp$Income_Group = ordered(sbp$Income, levels = c("High", "Medium", "Low"))
+
+# Then plot with new variable
+ggplot(sbp, aes(x = weight, y = bmi, color = Treatment_Group)) +
+  geom_point(alpha = 0.7) +
+  facet_grid(Income_Group ~ Education, labeller = label_both) +
+  theme_bw() 
+```
+
+4. Create a bar plot of the `Education` variable, faceted by `Treatment_Group` and `Smoke`, colored by `Married`. Bonus points: let the *y*-axis of the `facet_grid` scale *free*ly (yes, that's a hint).  
+
+```{r hw_4_answer, include = FALSE}
+# HW 4
+ggplot(sbp, aes(Education, fill = Married)) +
+    geom_bar() +
+    facet_grid(Treatment_Group ~ Smoke, scales = "free_y")
+```
+
+5. Create a mosaic plot of the `Married`, `Stress`, and `Education` variables. Then, move `Education` from the last variable to the first variable in the formula. The visual will change---does your interpretation of it change?   
+
+```{r hw_5_answer, include = FALSE}
+# HW 5
+mosaicplot(~ Married + Stress + Education, data = sbp, main = "")
+mosaicplot(~ Education + Stress + Married, data = sbp, main = "")
+```
+
+6. Obtain summary statistics of the `age` variable based on whether it's less than or equal to the median systolic blood pressure (`sbp`) value.  
+
+```{r hw_6_answer, include = FALSE}
+# HW 6
+# There are two ways to do this
+describeBy(sbp$age, sbp$sbp <= median(sbp$sbp))
+describeBy(sbp$age, sbp$sbp <= quantile(sbp$sbp, probs = 0.50))
+```
+
+7. Create a cross-tab object of the mosaicplot variables in question 5. Then make it into a flat table. Bonus points: put the ftable results into a data frame.   
+
+```{r hw_7_answer, include = FALSE}
+# HW 7
+cross_tab = xtabs(~ Married + Stress + Education, data = sbp)
+ftable(cross_tab)
+cross_tab_df = data.frame(ftable(cross_tab))
+```
+
+\newpage  
+
+### Exercise Answers
+
+*Exercise 1*
+
+1. Create a tableplot of the `sbp` data frame, sorted by the `Smoke` variable.    
+```{r ex_1_1_answer, eval = FALSE}
+tabplot::tableplot(sbp, sortCol = Smoke)
+```
+
+*Exercise 2*  
+
+1. Create a comparative density plot of the `bmi` variable (body mass index), using `Smoke` as the conditioning variable.  
+
+```{r ex_2_1_answer, eval = FALSE}
+ggplot(sbp, aes(x = bmi, fill = Smoke)) +
+    geom_density(alpha = 0.5) 
+```
+
+2. Create a boxplot or ridgeplot of the `bmi` variable, using `Smoke` and `Treatment_Group` as the conditioning variables.  
+
+```{r ex_2_2_answer, eval = FALSE}
+ggplot(sbp, aes(Smoke, bmi, fill = Treatment_Group)) +
+    geom_boxplot(position = position_dodge(width = 0.85))
+
+ggplot(sbp, aes(x = bmi, y = Smoke, fill = Treatment_Group)) +
+    geom_density_ridges2(scale = 0.9, rel_min_height = 0.01, alpha = 0.4) +
+    scale_y_discrete(expand = c(0.025, 0.05))
+```
+
+*Exercise 3*
+
+1. Create a scatterplot of `bmi` by `height`, colored by `Gender`. Include a loess smoother that is also colored by the grouping.   
+
+```{r ex_3_1_answer, eval = FALSE}
+ggplot(sbp, aes(height, bmi, color = Gender)) +
+    geom_smooth() +
+    geom_point()
+```
+
+2. Create a scatterplot matrix showing weight by height, faceted by `Smoke` and `Income`, sized by `bmi`, and colored by `Treatment_Group`.  
+
+```{r ex_3_2_answer, eval = FALSE}
+ggplot(sbp, aes(height, weight, color = Treatment_Group)) +
+    geom_point(aes(size = bmi)) +
+    facet_grid(Smoke ~ Income, labeller = label_both)
+```
+
+
+*Exercise 4*
+
+1. Create a bar plot of the `Education` variable, faceted by `Treatment_Group`.  
+
+```{r ex_4_1_answer, eval = FALSE}
+ggplot(sbp, aes(Education)) +
+    geom_bar() +
+    facet_wrap(~ Treatment_Group, ncol = 1)
+```
+
+*Exercise 5*
+
+1. Create a mosaic plot of the `Gender`, `Married`, and `Alcohol` variables.  
+
+```{r ex_5_1_answer, eval = FALSE}
+mosaicplot(~ Gender + Married + Alcohol, data = sbp, main = "")
+```
+
+2. Change the order of variables to see possible changes in the visual impression/interpretation of the plot (many possible answers).
+
+```{r ex_5_2_answer, eval = FALSE}
+mosaicplot(~ Alcohol + Gender + Married, data = sbp, main = "")
+```
+
+*Exercise 6*  
+
+1. Obtain summary statistics of the `height` variable by `Gender`.  
+
+```{r ex_6_1_answer, eval = FALSE}
+describeBy(sbp$height, sbp$Gender)
+```
+
+2. Obtain summary statistics of the `sbp` variable by whether the `age` is above or below the 75th percentile.  
+
+```{r ex_6_2_answer, eval = FALSE}
+describeBy(sbp$sbp, sbp$age <= quantile(sbp$age, probs = 0.75))
+```
+
+3. Create a cross-tab table of `Education`, `Stress`, and `Treatment_Group`. Then make it into a flat table.  
+
+```{r ex_6_3_answer, eval = FALSE}
+cross_tab = xtabs(~ Education + Treatment_Group, Stress, data = sbp)
+ftable(cross_tab)
+```
+
+***  
+
+*~ End of File ~*

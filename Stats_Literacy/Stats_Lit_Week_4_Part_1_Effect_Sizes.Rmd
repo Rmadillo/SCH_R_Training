@@ -1,0 +1,839 @@
+---
+title: "Statistical Literacy for Biologists: Week 4, Part 1 Effect Sizes"
+author: "Dwight Barry"
+date: "20 October 2017"
+output:
+  pdf_document: 
+    toc: yes
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.height = 3, fig.align = "center")
+
+# install.packages("abd", "bootES", "epitools", "simpleboot", "survminer", "KMsurv", dependencies = TRUE)
+```
+
+# Effect Sizes and Where to Find Them (in R)
+
+The use of effect sizes has been gaining in popularity for the last decade or so, but unfortunately has made little headway into some fields that have traditionally relied on *p*-values. But as we saw last week, effect sizes provide the results that we *really* want to know---not just whether two groups are different or the same, but ***how*** different or similar are they?    
+
+There are two major classes of effect size statistics (ESSs), those aimed at differences and those aimed at similarities.  
+
+As we also discussed last week, a point estimate by itself can be useful but is not the whole story---what we also need is a sense for the *precision of that estimate* of a population, which we can get from confidence intervals (frequentist or I-T) or credible/highest density intervals (Bayesian). So, we'll include CIs on all our ESS estimates today, and some HDIs where they're easy to get.  
+
+There are a variety of ways to calculate CIs, the most common of which are those based on parametric theory and those based on bootstrapping. We'll use both in this section. 
+
+## Data
+
+For simplicity's sake, we'll use the Stats Canada blood pressure data again for much of this section. We'll use some other, built-in, data sets occasionally to illustrate some specific tools where the `sbp` data isn't really suited.  
+
+```{r load_data, cache = TRUE}
+data(sbp, package = "sbpdata")
+```
+
+## R packages
+
+```{r load_packages}
+# Load libraries
+library(psych)
+library(BEST)
+library(simpleboot)
+library(bootES)
+library(epitools)
+library(gridExtra)
+library(tidyverse)
+```
+
+***  
+
+# Effect Sizes for Differences
+
+We often want to know whether two groups are different---*and by how much* (on "average", i.e., as a population). We'll look at means, medians, quantiles, proportions, counts/rates, and ratios in this section, and briefly explore differences of inferential philosophy applied in a categorical scenario (last week we used a numerical example).  
+
+
+## \|D|\: Absolute mean difference
+
+When we do initial calculations, we usually get the mean difference, with a sign representing a direction of change relative to the reference group. Since in many cases a "reference" group may not exist (as it did not in the brain surgery data), the use of absolute mean difference is typical, unless the direction is truly useful. Either is fine, depending on your need; we'll use \|D| here.    
+
+We'll look at `sbp`, as that's our clinically-important outcome variable---does the treatment lead to lower blood pressure, on average?  
+
+```{r fig.height=2.9}
+# Density plot, means by group
+ggplot(sbp, aes(sbp, fill = Treatment_Group)) +
+    geom_density(alpha = 0.4) +
+    geom_vline(data = filter(sbp, Treatment_Group == "Treatment"), 
+               aes(xintercept = mean(sbp)), color = "blue") +
+    geom_vline(data = filter(sbp, Treatment_Group == "Control"), 
+               aes(xintercept = mean(sbp)), color = "red") +
+    scale_y_continuous(NULL, breaks = NULL, name = "Relative Frequency") +
+    theme_bw()
+```
+
+So what are the means and their CIs, for each group? You can use the `t.test` function, but that requires splitting groups out from a data frame into vectors or separate data frames, and running a one-sample *t*-test on each vector. We'll do that in the next step to show other approaches, but as a short-cut, the `Rmisc` package has a handy function that allows formula notation, so it's much less code to get those values:  
+
+```{r}
+# Look at means and normal distribution CIs for weight by Treatment_Group
+Rmisc::group.CI(sbp ~ Treatment_Group, sbp)
+```
+\  
+
+Now we'll split the groups out into their own vectors to show some other ways to approach the same problem, and get to the plotting.  
+
+```{r}
+# Separate data into control and treatment groups
+Treatment = filter(sbp, Treatment_Group == "Treatment")
+Controls = filter(sbp, Treatment_Group == "Control")
+
+# Absolute difference between means
+abs(mean(Controls$sbp) - mean(Treatment$sbp))
+
+# Difference between means CI
+t.test(Controls$sbp, Treatment$sbp)$conf.int
+```
+
+
+You can also estimate difference in means and its CIs by [bootstrap](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)) with the `bootES` package/function.  
+
+```{r}
+# Difference between means, bootstrapped version using bootES
+# Your results will vary unless you set a seed 
+# (run it a few times to see what happens)
+bootES(sbp, data.col = "sbp", group.col = "Treatment_Group", contrast =
+    c("Treatment", "Control"), effect.type = "unstandardized", R = 1000)
+```
+
+Plotting the results is always a good thing, of course.     
+
+```{r fig.height=2.9}
+# Means and CIs plot
+# Note the use of mean_cl_boot to tell ggplot to calculate bootstrap CIs
+p1 = ggplot(sbp, aes(Treatment_Group, sbp, color = Treatment_Group)) + 
+    stat_summary(geom = "point", fun.y = mean) + 
+    stat_summary(geom = "errorbar", fun.data = mean_cl_boot, 
+                 width = 0) +
+    labs(y = expression(paste("Mean Systolic BP")), 
+         x = "", color = "Group") +
+    theme(legend.position = "none")
+
+# Difference between mean sbps into a two.boot object
+diff_means = two.boot(Controls$sbp, Treatment$sbp, mean, R = 1000)
+
+# Calculate the 95% CI using BCa bootstrapping (defaults to 10k reps)
+diff_means_ci = boot.ci(diff_means, conf = 0.95, type = "bca")
+
+# Make 1-row data frame for difference between means
+sbp_mean_df_diff = data.frame(Difference = "Difference",
+    Mean = mean(Controls$sbp) - mean(Treatment$sbp),
+    Lower_CI = diff_means_ci$bca[4], Upper_CI = diff_means_ci$bca[5])
+
+# Difference between means plot
+p2 = ggplot(sbp_mean_df_diff, aes(x = Difference, y = Mean)) +
+  geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0) +
+  geom_point() +
+  xlab("") +
+  ylab("Difference Between Means")
+
+# Plot side-by-side inside a single graph
+grid.arrange(p1, p2, widths = c(.75, .25), nrow = 1)
+``` 
+
+***  
+
+#### Exercise 1
+
+Obtain the difference in means for `height` by `Gender`, by both normal theory (e.g., via `t.test`) and by bootstrapping using `bootES`, with a CI for the difference for each method.  
+
+```{r include=FALSE, cache=TRUE}
+# Ex 1
+Female = filter(sbp, Gender == "Female")
+Male = filter(sbp, Gender == "Male")
+
+abs(mean(Female$height) - mean(Male$height))
+t.test(Female$height, Male$height)$conf.int
+
+bootES(sbp, data.col = "height", group.col = "Gender", contrast =
+    c("Male", "Female"), effect.type = "unstandardized")
+```
+
+
+***
+
+
+## Cohen's *d*: Standardized mean difference
+
+We used the `bootES` function above because it can be used for standardized effect sizes, as well. 
+
+Cohen's *d* is the number of common standard deviations between the two means. There's a great interactive visualization at http://rpsychologist.com/d3/cohend/ that provides a visual overview of this concept.    
+
+```{r cache=TRUE}
+# Cohen's d
+bootES(sbp, data.col = "sbp", group.col = "Treatment_Group", contrast =
+    c("Treatment", "Control"), effect.type = "cohens.d")
+
+# Hedge's g, with control SD used instead of pooled SD
+bootES(sbp, data.col = "sbp", group.col = "Treatment_Group", contrast =
+    c("Treatment", "Control"), effect.type = "cohens.d", 
+    glass.control = "Control")
+
+# Robust Cohen's d when you have "weird" tails or outliers
+bootES(sbp, data.col = "sbp", group.col = "Treatment_Group", contrast =
+    c("Treatment", "Control"), effect.type = "akp.robust.d")
+```
+
+\newpage  
+
+***  
+
+#### Exercise 2
+
+Using the Cohen's *d* widget at http://rpsychologist.com/d3/cohend/, look at differences in a density distribution between *d* = 0.5 (half a standard deviation) and *d* = 1 (1 standard deviation). Play with other values as well. Where do *you* start to think the differences between groups practically matters? (There is no correct answer, btw.)
+
+```{r include = FALSE}
+# Ex 2
+# http://rpsychologist.com/d3/cohend/
+```
+
+***  
+
+## What's the probability of a difference?
+
+We can use the `BEST` package (which we used last week with the brain surgey data) for a Bayesian approach to get a means and HDIs, as well as the difference between means and its HDI.
+
+```{r cache=TRUE, fig.height=4.5}
+# Run the MCMC analysis, can take a few mins
+BEST_CvT_sbp = BESTmcmc(Controls$sbp, Treatment$sbp)
+
+# Plot all, look at pieces (not included in handout)
+# plotAll(BEST_CvT_sbp)
+
+# Plot difference in means results
+plot(BEST_CvT_sbp)
+```
+
+
+```{r}
+# Estimate of true mean difference
+mean(BEST_CvT_sbp$mu1 - BEST_CvT_sbp$mu2)
+
+# HDI on the difference between means
+hdi(BEST_CvT_sbp$mu1 - BEST_CvT_sbp$mu2)
+```
+
+\  
+
+*** 
+
+#### Exercise 3
+
+What's the estimated true difference and the probability range for that the difference for `height` by `Gender`?  
+
+```{r include=FALSE, cache=TRUE}
+# Ex 3
+BEST_FvM_height = BESTmcmc(Female$height, Male$height)
+
+plot(BEST_FvM_height)
+
+mean(BEST_CvT_sbp$mu1 - BEST_CvT_sbp$mu2)
+
+hdi(BEST_CvT_sbp$mu1 - BEST_CvT_sbp$mu2)
+```
+
+***
+
+## Difference between medians
+
+To look at a difference between medians (with a CI), you can use `two.boot` from the `simpleboot` package. Unfortunately, `simpleboot` doesn't use formula notation so your data must be in wide format or in two different vectors or data frames for it to work---one of the reasons we split them out earlier.  
+
+```{r}
+# Look at the distributions and plot medians from the groups' data frames
+ggplot(sbp, aes(sbp, fill = Treatment_Group)) +
+    geom_density(alpha = 0.4) +
+    geom_vline(xintercept = median(Controls$sbp), color = "red") +
+    geom_vline(xintercept = median(Treatment$sbp), color = "blue") +
+    theme_bw()
+```
+
+We can look at each median (with `one.boot`) and its CI by bootstrap; first let's do the calculations and save them to a data frame.  
+
+```{r}
+# Look at medians and CIs for sbp by Control (c_*) and Treatment (t_*) groups
+c_median = median(Controls$sbp)
+c_median_boot = one.boot(Controls$sbp, median, R = 1000)
+c_median_ci = boot.ci(c_median_boot, conf = 0.95, type = "bca")
+
+t_median = median(Treatment$sbp)
+t_median_boot = one.boot(Treatment$sbp, median, R = 1000)
+t_median_ci = boot.ci(t_median_boot, conf = 0.95, type = "bca")
+
+sbp_median_df = data.frame(Group = c("Control", "Treatment"), Median = 
+    c(c_median, t_median), Lower_CI = c(c_median_ci$bca[4], 
+    t_median_ci$bca[4]), Upper_CI = c(c_median_ci$bca[5], 
+    t_median_ci$bca[5]))
+```
+
+Now look at the data frame (`View(sbp_median_df)`): 
+
+```{r echo=FALSE}
+knitr::kable(sbp_median_df)
+```
+
+And we can look at the difference between them (and *its* CI) with `two.boot`...    
+
+```{r}
+# Difference between medians
+median(Treatment$sbp) - median(Controls$sbp)
+
+# Difference between median sbps into a two.boot object
+# R is number of bootstrap replications
+diff_medians = two.boot(Treatment$sbp, Controls$sbp, median, R = 1000)
+
+# Calculate the 95% CI using BCa bootstrapping (defaults to 10k reps)
+diff_medians_ci = boot.ci(diff_medians, conf = 0.95, type = "bca")
+diff_medians_ci
+```
+
+...and plot that as well:  
+
+```{r fig.width = 5.25}
+# Medians and CIs
+p1 = ggplot(sbp_median_df, aes(x = Group, y = Median, color = Group)) +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0) +
+    geom_point() +
+    xlab("") +
+    ylab("Median Systolic BP") +
+    theme(legend.position = "left")
+
+# Make 1-row data frame for difference between medians
+sbp_median_df_diff = data.frame(Difference = "Difference",
+    Median = median(Treatment$sbp) - median(Controls$sbp),
+    Lower_CI = diff_medians_ci$bca[4], Upper_CI = diff_medians_ci$bca[5])
+
+# Difference between medians
+p2 = ggplot(sbp_median_df_diff, aes(x = Difference, y = Median)) +
+  geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0) +
+  geom_point() +
+  xlab("") +
+  ylab("Difference Between Medians")
+
+# Plot side-by-side inside a single graph
+grid.arrange(p1, p2, widths = c(.75, .25), nrow = 1)
+```
+
+
+## Difference between any univariate statistic (e.g., quantiles) 
+
+`two.boot` allows you to compare any two univariate statistics. For example, you could compare the 75th percentile of the two groups:  
+
+```{r}
+# Difference between 75th percentiles
+quantile(Treatment$sbp, probs = c(0.75)) - quantile(Controls$sbp, probs = c(0.75))
+
+# Put into a two.boot object
+diff_75 = two.boot(Treatment$sbp, Controls$sbp, quantile, probs = 0.75, R = 1000)
+
+# 95% CI of the difference
+diff_75_ci = boot.ci(diff_75, conf = 0.95, type = "bca")
+diff_75_ci
+``` 
+
+Which can also be plotted just like the other examples we've explored (code not shown):  
+
+```{r echo=FALSE, fig.width = 5.25}
+# Look at Q75s and CIs for sbp by Control (c_*) and Treatment (t_*) groups
+c_75 = quantile(Controls$sbp, probs = c(0.75))
+c_75_boot = one.boot(Controls$sbp, quantile, probs = 0.75, R = 1000)
+c_75_ci = boot.ci(c_75_boot, conf = 0.95, type = "bca")
+
+t_75 = quantile(Treatment$sbp, probs = c(0.75))
+t_75_boot = one.boot(Treatment$sbp, quantile, probs = c(0.75), R = 1000)
+t_75_ci = boot.ci(t_75_boot, conf = 0.95, type = "bca")
+
+sbp_75_df = data.frame(Group = c("Control", "Treatment"), Q75 = 
+    c(c_75, t_75), Lower_CI = c(c_75_ci$bca[4], 
+    t_75_ci$bca[4]), Upper_CI = c(c_75_ci$bca[5], 
+    t_75_ci$bca[5]))
+
+# Q75s and CIs
+p1 = ggplot(sbp_75_df, aes(x = Group, y = Q75, color = Group)) +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0) +
+    geom_point() +
+    xlab("") +
+    ylab("75th Percentile of SBP") +
+    theme(legend.position = "left")
+
+# Make 1-row data frame for difference between medians
+sbp_75_df_diff = data.frame(Difference = "Difference",
+    Q75 = quantile(Treatment$sbp, probs = c(0.75)) - quantile(Controls$sbp, probs = c(0.75)),
+    Lower_CI = diff_75_ci$bca[4], Upper_CI = diff_75_ci$bca[5])
+
+# Difference between Q75s
+p2 = ggplot(sbp_75_df_diff, aes(x = Difference, y = Q75)) +
+  geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0) +
+  geom_point() +
+  xlab("") +
+  ylab("Difference Between 75th Percentiles")
+
+# Plot side-by-side inside a single graph
+grid.arrange(p1, p2, widths = c(.75, .25), nrow = 1)
+```
+
+\  
+
+
+### Median difference (you probably don't want this)
+
+Sometimes you may want the median difference instead of the difference between medians, which is another way of asking for the non-parametric difference between the distributions (aka the ole Mann-Whitney-Wilcoxon test). Use `wilcox.test` for that. Just remember that this is *not* the difference between medians! (Which begs the question of whether this ES is even useful---it's included here because one might assume the same thing that works for the `t.test` might work for the `wilcox.test`, but it doesn't!)    
+
+```{r}
+# Median difference
+# H_0: there is a 50% probability that a value chosen at random 
+# from one group exceeds a value chosen at random from the other group 
+median_diff = wilcox.test(sbp ~ Treatment_Group, data = sbp, conf.int = TRUE)
+
+# Show median difference
+median_diff$estimate
+
+# 95% CI
+median_diff$conf.int
+```
+
+\newpage 
+
+***
+
+#### Exercise 4
+
+Look at the confidence intervals widget at http://rpsychologist.com/d3/CI/. The line down the middle is the true mean, and each dot/bar is a single "experiment." Each dot is the mean, and its bar is the 95% CI for that mean. The default setting is that each sample has *n*=5. Watch the simulation go up to about 100 replications, watching for how often the sample mean and its CI do *not* encompass the true mean. Now, bump up the sample size to 15. Watch it go for 50-100 replications. Now, use the top slider to change the CI to 90%. Now bump the sample size back down to 5. Finally, bump the sample size up to 30 or higher.  
+
+In between changes to the sampling "frame", read the text beneath the simulation. Do those statements conflict at all with your understanding of CIs, and if so, how? Is the importance of CIs more apparent with this demo, or more confusing? If more confusing, let's discuss!   
+
+```{r include = FALSE}
+# Ex 4
+# http://rpsychologist.com/d3/CI/
+```
+
+***  
+
+
+## Proportions
+
+We can look at differences between proportions in the same general way as we looked at medians and means. 
+
+`prop.test` is the `base` package way to get the proportions and their CIs, but the `binom.exact` function from `epitools` has some more useful properties we'll use to plot with in a moment.  
+
+```{r}
+# Data from Muller, F. H., Tobakmissbrauch und Lungencarcinom,
+# Zeit. f. Krebsforsch. 49, 57-85, 1939. One of the early papers
+# investigating the relation between smoking and lung cancer.
+
+# Number ("no_*") of heavy smokers in one group of 86 lung cancer patients
+# and one group of 86 healthy individuals.
+
+no_heavy_smokers <- c(56, 31)
+no_cases <- c(86, 86)
+
+prop.test(x = c(no_heavy_smokers), 
+          n = c(no_cases))
+
+binom.exact(x = c(no_heavy_smokers), 
+            n = c(no_cases))
+```
+
+To plot the proportions and their CIs, we'll create a data frame from a `binom.exact` object (which is actually already a data frame; these first two bits of code just prep it for ease of plotting).  
+
+```{r fig.width = 4}
+lung_ci = binom.exact(x = c(no_heavy_smokers), n = c(no_cases))
+
+lung_df = data.frame(Group = c("Lung Cancer", "No Lung Cancer"),
+                         Proportion = lung_ci$proportion,
+                         Lower_CI = lung_ci$lower,
+                         Upper_CI = lung_ci$upper)
+
+# Plot the two proportions and their CIs
+ggplot(lung_df, aes(x = Group, y = Proportion, color = Group)) +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.1) +
+    geom_point() +
+    ylab("Proportion of Heavy Smokers")
+```
+
+As above, we can use `gridExtra` to plot the difference between proportions and its CI alongside a plot of the group values:  
+
+```{r fig.width = 5.25}
+# Obtain CI for the difference
+prop_diff_ci = prop.test(x = c(no_heavy_smokers), n = c(no_cases))
+
+# Make 1-row data frame
+prop_lung_diff = data.frame(Difference = "Difference",
+    Proportion = prop_diff_ci$estimate[1] - prop_diff_ci$estimate[2],
+    Lower_CI = prop_diff_ci$conf.int[1],
+    Upper_CI = prop_diff_ci$conf.int[2])
+
+# Create main plot with the groups (as above)
+prop_p1 = ggplot(lung_df, aes(x = Group, y = Proportion, color = Group)) +
+  geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.1) +
+  geom_point() +
+  labs(x= "", y = "Proportion of Heavy Smokers") +
+  theme(legend.position = "left")
+
+# Create the secondary plot of the difference
+prop_p2 = ggplot(prop_lung_diff, aes(x = Difference, y = Proportion)) +
+  geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.1) +
+  geom_point() +
+  labs(x= "", y = "Difference in Proportion of Heavy Smokers")
+
+# Plot side-by-side inside a single graph
+grid.arrange(prop_p1, prop_p2, widths = c(.75, .25), nrow = 1)
+```
+
+## Bayesian differences between proportions
+
+The `BayesianFirstAid` package provides an easy Bayesian equivalent to the frequentist `prop.test` that's useful for illustration and comparison with the frequentist approach, above:  
+
+```{r fig.height=3.75}
+# devtools::install_github("rasmusab/bayesian_first_aid")
+library(BayesianFirstAid)
+
+bayes.prop.test(no_heavy_smokers, no_cases)
+
+# Save the return value in order to inspect the model result further.
+fit <- bayes.prop.test(no_heavy_smokers, no_cases)
+plot(fit)
+summary(fit)
+```
+
+
+## Counts or rates
+
+The `pois.exact` function in `epitools` provides the same sort of information as `binom.exact`, only for rates instead of proportions.  
+
+```{r}
+# Create fake tumor count data (Treatment same as used before)
+set.seed(54)
+Treatment = rpois(30, 1)
+set.seed(24)
+Control = rpois(20, 2)
+
+# Group rates (tumor count per organism) and 90% CIs 
+pois.exact(x = c(sum(Treatment), sum(Control)), 
+           pt = c(30, 20), conf.level = 0.90)
+```
+
+Which we can also plot the rates and CIs as we have above in the *Proportions* section.  
+
+```{r fig.width = 4}
+tumor_ci = pois.exact(x = c(sum(Treatment), sum(Control)), 
+    pt = c(30, 20), conf.level = 0.90)
+
+tumor_new = data.frame(
+    Group = c("Treatment", "Control"),
+    Rate = tumor_ci$rate,
+    Lower_CI = tumor_ci$lower,
+    Upper_CI = tumor_ci$upper)
+
+# Plot the two rates and their CIs
+ggplot(tumor_new, aes(x = Group, y = Rate, color = Group)) +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.1) +
+    geom_point()
+```
+
+
+The basic effect size is the same as it is for most comparative differences---i.e., the difference between the rates. Here, that would be a difference of `r tumor_new[2, 2] - tumor_new[1, 2]` tumors between the groups.  
+
+CIs for this difference do appear at times in epidemiology literature but there is no ready-made function I know of in R that calculates this (let me know if you find one). To accomodate the fact that the groups have different denominators, you instead usually see the *rate ratio*, *risk ratio*, or *odds ratio* between groups, where a ratio of 1 means that the rates or odds are the same. 
+
+The `poisson.test` function gives us the CI on the rate ratio[^1].
+
+[^1]: In case you're curious, here's a nice, simple overview of the difference between a rate ratio and a risk ratio: https://www.ctspedia.org/do/view/CTSpedia/RiskRate#Rate_Ratio_vs_Risk_Ratio_What_do
+
+```{r}
+poisson.test(x = c(no_heavy_smokers), 
+             T = c(no_cases))
+```
+
+The risk ratio can be found with the `riskratio` function on a 2x2 matrix (see `?riskratio` for set up details):
+
+```{r}
+riskratio(matrix(c(55, 31, 30, 56), 2, 2), method = "boot")
+```
+
+## Odds Ratio
+
+The odds ratio is the most common effect size for contingency tables, and it's also the primary outcome of logistic regression.  
+
+```{r}
+# Obtain the odds ratio and CI 
+oddsratio(matrix(c(55, 31, 30, 56), 2, 2))
+```
+
+\  
+
+***  
+
+# Effect Sizes for Similarities (Correlation)
+
+Never forget---correlation is *not* causation!   
+
+## Pearson's *r*
+
+The typical correlation coefficient is Pearson's, which works well with linear relationships on numeric data where the variance remains constant. 
+
+```{r fig.height=5, fig.width=5}
+ggplot(Controls, aes(sbp, weight)) +
+    geom_point()
+
+cor(Controls$weight, Controls$sbp)
+cor.test(Controls$weight, Controls$sbp)$conf.int
+```
+
+We can use `bootES` for this too, of course:  
+
+```{r}
+bootES(c(Controls$weight, Controls$sbp), effect.type = "r")
+```
+
+As an example of the Bayesian approach, we can evaluate the probability of a correlation value:  
+
+```{r cache=TRUE, fig.height=5.25, fig.width=5}
+# iterations cut down from 5k to save processing time in class
+bayes_cor = BayesianFirstAid::bayes.cor.test(sbp$sbp, sbp$weight, n.iter = 1000) 
+plot(bayes_cor)
+bayes_cor
+```
+
+
+When the data are ordinal, or are not linearly related, or the variance is not constant, you need you use either Spearman's or Kendall's correlation instead of Pearson's.  
+
+We can tell just by looking at the scatterplot that the variance is not constant, so we'll move on to the other options.  
+
+## Spearman's $r_s$
+
+Our old friend the `psych` package has a `cor.ci` function that calculates Spearman's and a bootstrapped CI for it. You'll probably want to use the `_.emp` values for the limits.     
+
+```{r}
+cor.ci(sbp[ , c(5, 3)], method = "spearman", plot = FALSE)
+```
+
+The main advatange to Spearman's coefficient is that it measures more or less the same concept that Pearson's does, so the value itself is readily interpretable. The main (and most say fatal) drawback is that there is no agreement over how standard errors (and thus confidence intervals) should be calculated for it. Much of the literature suggests using Kendall's instead of Spearman's.  
+
+## Kendall's $\tau$
+
+Kendall's isn't a correlation in the exact same sense that Pearson's or Spearman's are, as it actually measures something different: the difference between the probability that the observed data are in the same order versus the probability that they aren't. This is more easily explained via example, e.g., see these YouTube videos for a great explanation via example ([Part 1]( https://youtu.be/oXVxaSoY94k), [Part 2](https://youtu.be/V4MgE43SrgM); a comparison with Spearman's by the same vlogger is also on YouTube: [Part 1](https://youtu.be/D56dvoVrBBE), [Part 2](https://youtu.be/7i5aU2pBcMY).
+
+```{r}
+cor.ci(sbp[ , c(5, 3)], method = "kendall", plot = FALSE)
+```
+
+A nice property of Kendall's value is that has a direct intepretation in terms of probability: it's 59% more likely to increase than to decrease bmi with an increase in weight.  
+
+### ASIDE: Kendall's vs. Spearman'---What's the difference?
+
+In short, they measure different things, although both can be used on numeric as well as ordinal scales. Spearman's is meant to measure the monotonic association between two variables, and is often used in place of Pearson's when the relationship is non-linear (but still monotonic) and where outliers or other factors are skewing the relationship away from *bivariate* normality (the individual variables can be any distribution). Kendall's has a huge advantage in that it can be used when an association has a trend that is not monotonic, and also has some superior statistical properties we'll get to in a moment.  
+
+Historically, Spearman's was often used because it was far easier to calculate and it mimicked (in concept) the least-squares approach of Pearson's. Perhaps somewhat cynically, I'd also bet Spearman's was often used instead of Kendall's because it gives you higher values, which when you're used to interpreting *r* makes your result look better when compared with Kendall's. Finally, explaining Spearman's "as simply an extension of Pearson's *r*" can be far easier than having to explain Kendall's in an academic presentation or business meeting.  
+
+Computers have since rendered the first reason irrelevant, and statisticians have determined the second one to be statistically naive: Spearman's is less robust and less efficient than Kendall's approach, especially when trying to compute standard errors---there is still no widely accepted way to do it with Spearman's coefficient. In other words, Kendall's coefficient estimates a population value, while Spearman's does not. Spearman's approach also breaks down in the presence of only a few large deviations between pairs of values, even when most of the pairs in the data are fairly close. In addition, there is no intuitive interpretation of what Spearman's coefficient *really* means (only that "further from zero is better"), while Kendall's can be directly interpreted as a probability.
+
+As for the third and fourth reasons... well, in analytics work we should be honest and not use Spearman's or any other statistic just because it looks better (you're just *asking* for trouble down the road). Off-the-cuff explanation of Kendall's in presentations *is* tough, though a simple transformation can help: use the formula:  **$\tau$ + (0.5 * ( 1 - $\tau$))**. For example, using the Kendall's $\tau$ value above---`0.59 + (0.5 * (1 - 0.59))`---we can determine that there is a positive association between 80% of all possible pairs of data points. Still not as easy as dropping Spearman's coefficient and leaving it to the audience to assume what they're going to assume, but if your goals are to advance science, using a more "scientific" tool is probably better...  
+
+\ 
+
+***  
+
+#### Exercise 5
+
+Guess the correlation!
+
+***
+
+
+
+# Regression and Effect Sizes
+
+As we've mentioned before, these different stats tests are all actually just special cases of generalized linear models (`glm` in R), also known more commonly simply as "regression." Regressions can look at similarities, differences, or both. Their coefficients are their effect sizes.    
+
+Although technically the use of regression implies causality, there are times when you just wish to know the impact of one variable on its relationship with another.  
+
+When the "predictor" is categorical, the difference between the intercept and the predictor coefficient is simply the difference in means.  
+
+When both variables are numeric, the coefficient is the change in the y-variable for each unit of the x-variable, so regardless of which variable you choose to the be descriptor/predictor, you can see the effect size by looking at the coefficients.    
+
+We'll start with the traditional numeric-numeric regression and then do the same with a catagorical-numeric regression (aka *t*-test). 
+
+## Numeric-Numeric regression
+
+We'll create a regression that describes `sbp` by `weight`.    
+
+```{r fig.width = 5, fig.height = 5}
+# Look at the data and the model
+ggplot(Controls, aes(weight, sbp)) +
+    geom_smooth(method = "lm") +
+    geom_point() +
+    facet_wrap(~Treatment_Group)
+```
+
+Now we can run the linear model. We'll focus on the Control group to keep things simple.    
+
+```{r}
+# Linear model 
+sbp_weight_control_lm = lm(sbp ~ weight, data = Controls)
+
+# This is equivalent:
+# sbp_weight_control_lm = glm(bmi ~ weight, data = Controls, family = gaussian)
+
+# review model coefficients
+sbp_weight_control_lm
+```
+
+We can see that for every 1 unit increase in weight, our effect size is an increase of about `r round(sbp_weight_control_lm$coef[2], 2)` systolic blood pressire "points" (95% CI: `r round(confint(sbp_weight_control_lm)[2], 2)`, `r round(confint(sbp_weight_control_lm)[4], 2)`).     
+
+The `dotwhisker` package has a simple interface to plotting the model coefficients, as well as being able to plot multiple models (i.e., as in information-theoretic inference). For now, we'll just look at the default output, which does not show the intercept.  
+
+
+```{r}
+dotwhisker::dwplot(sbp_weight_control_lm)
+```
+
+
+We've discussed the importance of distributions, and how we define models based on the distribution of the "errors", that is, the difference between the model and the observed values, also called residuals. This helps us decide whether our distributional assumption for the model "errors" was a good one. Again, from `psych`, using the `multi.hist` function on the model residuals gives us a good additional view of the residuals that the usual `plot(model_object)` approach doesn't.     
+
+```{r}
+# Histogram and density of residuals, plus normal curve
+multi.hist(sbp_weight_control_lm$residuals)
+```
+
+### Quantile regression
+
+Regressions of numeric variables don't have to focus on means; we can use quantile regression to evaluate the relationship at different quantiles. 
+
+```{r fig.width = 5, fig.height = 5}
+ggplot(Controls, aes(weight, sbp)) +
+  stat_quantile(quantiles = c(0.1, 0.25, 0.5, 0.75, 0.9)) +
+  geom_point()
+```
+
+We can extract those regressions with `rq` from the `quantreg` package (which is also what `ggplot2` uses for its `stat_quantile` function).  
+
+```{r}
+# Just 3 quantiles shown for brevity
+weight_quantile_lm = rq(sbp ~ weight, tau = c(0.25, 0.50, 0.75), data = Controls)
+summary(weight_quantile_lm)
+```
+
+## Numeric-Categorical regression
+
+Now we'll look at a regression between `sbp` and `Treatment_Group` from the `sbp` data, as we did above with differences between means and various quantiles.  
+
+```{r fig.width = 4, fig.height = 2}
+# run the linear model
+sbp_lm = lm(sbp ~ Treatment_Group, data = sbp)
+
+# review model coefficients
+sbp_lm
+
+# if you want to confirm this is the same as a t-test:
+# Intercept (reference category mean) = 
+# mean(Controls$sbp)
+# Coefficient ("effect" of being in Treatment on sbp) = 
+# mean(Treatment$sbp) - mean(Controls$sbp)
+
+# quick and dirty plot
+ggplot(sbp, aes(Treatment_Group, sbp)) +
+  geom_boxplot() +
+  coord_flip()
+```
+
+## Residuals
+
+While residuals (the difference between the model/regression and the data) are most often used for diagnosing the model (as seen above), they also can be useful as an effect size. For this example, we'll return to the neurosurgery data from Week 2:   
+
+```{r fig.width = 3}
+# Get the data and obtain FSIQ delta
+neuro = read.csv("https://raw.githubusercontent.com/Rmadillo/SCH_R_Training/master/Diff_Inf/Shurtleffetal2015_episurg_data.csv", header=T)
+neuro_wide = reshape2::dcast(neuro, ID + Side + Duration ~ Phase, value.var = "FSIQ")
+neuro_wide$FSIQ_D = neuro_wide$Post - neuro_wide$Pre
+neuro_wide = na.omit(neuro_wide)
+
+# Get the residuals from the null model and add them back to the data
+FSIQ_lm_h0 = lm(FSIQ_D ~ 1, data = neuro_wide)
+neuro_wide$FSIQ_resid = FSIQ_lm_h0$resid
+
+# Plot residuals against the groups
+ggplot(neuro_wide, aes(Duration, FSIQ_resid, color = Duration)) +
+  geom_hline(yintercept = 0, color = "darkgreen") +
+  geom_point() +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+\newpage 
+
+## Survival Analysis (optional)
+
+The `survminer` package makes a nice all-in-one survival plot and risk table for any time-to-event analysis. We'll use the `tongue` cancer data from the `KMsurv` package to demonstrate. 
+
+```{r fig.height = 6}
+library(survival)
+library(survminer)
+
+# Get data and add names of cancer type
+data(tongue, package = "KMsurv")
+
+tongue$tumor = ifelse(tongue$type == 1, "Aneuploid",  "Diploid")
+
+# Create survival model
+tongue_survival = survfit(Surv(time = time, event = delta) ~ tumor, 
+  data = tongue)
+
+# Plot the curves and table
+ggsurvplot(tongue_survival, risk.table = TRUE, conf.int = TRUE)
+```
+
+\newpage  
+
+# Sanity check: always plot the data
+
+We'll bring back Anscombe's Quartet to show another interesting property of these datasets. 
+
+```{r cache=TRUE}
+aq = reshape(anscombe, varying = TRUE, sep="", direction = "long", timevar = "seriesname")
+```
+
+First, we'll plot it, as we did last week, only we'll add the regression lines to each plot.  
+
+```{r fig.height=5, fig.width=6}
+ggplot(aq, aes(x, y)) +
+  geom_smooth(method = "lm") +
+  geom_point() +
+  facet_wrap(~ seriesname)
+```
+
+Yep, not only are the means and standard deviations exactly the same as we saw last week, so are the regressions. Let's look at the regression summaries for each. 
+
+```{r eval = F}
+aq_list = split(aq, aq$seriesname)
+aq1 = lm(x ~ y , data = aq_list[[1]])
+aq2 = lm(x ~ y , data = aq_list[[2]])
+aq3 = lm(x ~ y , data = aq_list[[3]])
+aq4 = lm(x ~ y , data = aq_list[[4]])
+summary(aq1)$coefficients
+summary(aq2)$coefficients
+summary(aq3)$coefficients
+summary(aq4)$coefficients
+summary(aq1)$r.square
+summary(aq2)$r.square
+summary(aq3)$r.square
+summary(aq4)$r.square
+```
+
+\  
+
+
+
+## Remember: Always plot!!!
+
+The examples and topics covered in this section are just a sampling of the wide variety of effect size statistics, though these are generally the ones most often used. Consider this a start of exploring this "newer" approach to inference---the next step is often using glms to obtain the same ESS results as these more compartmentalized versions shown here, though we are not covering that in this course series.  
+
+***
+
+*End of file*  

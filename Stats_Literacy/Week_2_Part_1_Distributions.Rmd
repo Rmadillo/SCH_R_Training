@@ -1,0 +1,567 @@
+---
+title: 'Statistical Literacy for Biologists: Week 2, Part 1'
+author: "Michele Shaffer"
+date: "6 October 2017"
+output:
+
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.height = 3, fig.align = "center")
+```
+*The best thing about being a statistician is that you get to play in everyone's backyard. ~ John Tukey*
+
+# What are Distributions and Why Use Them?
+
+## What is a Distribution?
+
+*Be approximately right rather than exactly wrong. ~ John Tukey*
+
+You can envision a distribution as a statistical model intended to approximate how your data are generated. These models are not meant to exactly replicate observed data. Unless you simulate data directly from a known distribution, there will always be some discrepancy (error) between your data and the chosen model. 
+
+While there are *many, many* potential distributions, it may be comforting to know that for the majority of scientific questions, we often use the same small number of distributions that empirically work well. We will discuss some of the most common distributions: normal, log-normal, binomial, Poisson, and negative binomial.
+
+## How do you determine which distribution is needed?
+
+Rather than trying all of a particular set of known distributions, it is helpful to first think about some attributes of your data. If you look up different distributions you will often see them summarized in statistical terms, but this is not very helpful to get you started. Instead, all of the plotting you learned in Week 1 will be helpful for these steps.
+
+First, let us ask some basic questions about the data.
+
+\  
+
+1. **Are the data categorical or quantitative?** 
+
+Recognizing that you may collect the data and analyze it in different ways, think about the way you would ultimately want to look at your data. 
+
+Are you only interested in the *presence or absence* of a particular characteristic? In that case, we know the data are categorical, and to be more specific, binary. 
+
+Or are you interested in *how abundant* something is if it is present? In that case you may have a count that could be zero or any positive integer. 
+
+Or, you may be able to measure something much more specifically, say you are measuring the time to an event. This may be continuous to whatever accuracy you can record. Or, you could round to a unit of interest such as minutes or create a cutpoint for above/below that results in count and binary variables, respectively.
+
+\newpage
+
+## Example
+
+This example is modified from a published study of hepatitis C virus (HCV). For this example, we will assume the viral loads come from a sample of 500 unique patients.
+
+Table: The distribution of groups of viral load.
+
+Viral Load             | Frequency |  Percent | 
+-----------------------|-----------|----------|
+Zero                   | 265       | 53.0     |
+200 to 200,000         |  78       | 15.6     |
+200,001 to 1,000,000   | 110       | 22.0     |
+1,000,001 to 5,000,000 |  40       |  8.0     |
+5,000,001 to 25,000,000|   7       |  1.4     |
+
+```{r}
+# Simulate some data to represent the underlying viral load
+viralLoad<-c(rep(0,265), runif(78,200,200000), runif(110,200001,1000000), runif(40,1000001,5000000), runif(7,5000001,25000000)) 
+```
+
+\  
+
+**Exercise 1**
+Think of at least three ways we could examine the outcome of viral load. For example, what measurements scales could be used, and how could you visualize the data?
+
+\  
+
+2. **Are the data expected to be symmetric?**
+
+Do your data look like a mirror image if you horizontally folded the data in the middle? If so, they are symmetric. Also, are they clustered around a central value? If so, they are symmetric and unimodal.
+
+\  
+
+```{r dataload, cache = TRUE} 
+# Load sbp data from earlier
+sbp = read.csv("https://ssc.ca/sites/ssc/files/archive/documents/case_studies/2003/documents/datafile.dat", header = T)
+sbp = sbp[ , 1:18]
+sbp[ , c(2:5, 9:12, 14:18)] = data.frame(apply(sbp[ , c(2:5, 9:12, 14:18)], 2, as.factor))
+str(sbp)
+# Histogram for lowest weight category
+hist(x=sbp$sbp[sbp$overwt=="1"], xlim=c(50,250))
+ # Histogram for middle weight category
+hist(x=sbp$sbp[sbp$overwt=="2"], xlim=c(50,250))
+# Histogram for highest weight category
+hist(x=sbp$sbp[sbp$overwt=="3"], xlim=c(50,250)) 
+```
+
+\  
+
+**Exercise 2**
+Look at the histograms of systolic blood pressure for each of the overweight categories and decide if they are symmetric. And then look at systolic blood pressure by smoking status.
+
+\  
+
+```{r echo=FALSE, include = FALSE} 
+# Histogram for non-smokers
+hist(x=sbp$sbp[sbp$smoke=="N"], xlim=c(50,250)) 
+# Histogram for smokers
+hist(x=sbp$sbp[sbp$smoke=="Y"], xlim=c(50,250)) 
+```
+
+\  
+
+3. **Are there limits for your data?**
+
+If there are natural limits for your data, using a distribution that does not constrain the values to these limits can cause problems. If your data are constrained, is there a lower constraint, an upper constraint, or both? 
+
+\  
+
+``` {r}
+hist(x=sbp$bmi) # Histogram of BMI
+min(sbp$bmi) # Calculate minimum
+max(sbp$bmi) # Calculate maximum
+```
+\  
+
+## Now let us look at the different distributions.
+
+Name     |  Description 
+---------|-------------
+dname( ) |  Density function  
+pname( ) |  Cumulative density function  
+qname( ) |  Quantile function  
+rname( ) |  Random deviates  
+
+Distribution      | R Name
+------------------|-------
+Normal            | norm
+Lognormal         | lnorm
+Binomial          | binom
+Poisson           | pois
+Negative binomial | nbinom
+
+\newpage
+
+## Normal
+
+This distribution probably (no pun intended) needs no introduction. It is symmetric and unimodal and is determined by two parameters, the mean and standard deviation.
+
+\  
+
+```{r fig.width = 5}
+# Specify seed for random number generation
+set.seed(seed=4321) 
+
+# Generate a regular sequence of numbers
+xseq1<-seq(from=-4, to=4, by=.01) 
+# Get the corresponding density values for the normal distribution
+densities1<-dnorm(x=xseq1, mean=0, sd=1)
+# Plot the density
+plot(x=xseq1, y=densities1, col="darkgreen", xlab="", ylab="Density", type="l", lwd=2, cex=1, main="PDF of Normal(0,1)", cex.axis=.8) 
+
+# Take random draws from a normal distribution
+randomdeviates1<-rnorm(n=1000, mean=0, sd=1) 
+# Histogram of random normal draws
+hist(x=randomdeviates1, main="Random Draws from Normal(0,1)", col="darkorange", cex.axis=.8, xlab="x", xlim=c(-4,4))
+```
+
+\newpage
+
+## Lognormal
+
+Now we will look at a distribution that is not symmetric.
+
+\  
+
+```{r fig.width = 5}
+# Specify seed for random number generation
+set.seed(seed=5321) 
+
+# Generate a regular sequence of numbers
+xseq2<-seq(from=0, to=15, by=.01) 
+# Get the density values for the lognormal distribution
+densities2<-dlnorm(x=xseq2, meanlog=0, sdlog=1) 
+# Plot the density
+plot(x=xseq2, y=densities2, col="darkgreen",xlab="", ylab="Density", type="l", lwd=2, cex=1, main="PDF of Lognormal(0,1)", cex.axis=.8) 
+
+# Take random draws from a lognormal distribution
+randomdeviates2<-rlnorm(n=1000, meanlog=0, sdlog=1) 
+# Histogram of random normal draws
+hist(x=randomdeviates2, main="Random Draws from Lognormal(0,1)", col="darkorange",cex.axis=.8, xlab="x", xlim=c(0.1,15)) 
+```
+
+\  
+
+If you transform lognormally distributed data by taking the natural logarithm, the resulting transformed data are normally distributed. We will learn more about transformations and when to use them in Week 4.
+
+\  
+
+```{r fig.width = 5}
+# Take the logarithm of our random lognormal draws 
+lograndomdeviates2<-log(randomdeviates2,base=exp(1)) 
+# Histogram of log-transformed random lognormal draws
+hist(lograndomdeviates2,main="Random Draws from a Log-Transformed Lognormal(0,1)", col="darkorange", cex.axis=.8, xlab="x", xlim=c(-4,4)) 
+```
+
+\newpage  
+
+## Binomial
+
+Now we will look at distributions where the outcome is discrete. The binomial distribution has two parameters, *n* and *p*. If you have a binary outcome such as present/absent, detected/not detected or success/failure in a series of trials, the binomial distribution represents the number of successes out of *n* trials, where each trial has a probability of success *p*.
+
+Let's look at the distribution when the probability of success is 0.5, and we have only a single trial.
+
+\  
+
+```{r fig.width = 4}
+# Specify seed for random number generation
+set.seed(seed=6321) 
+
+# Generate a regular sequence of numbers
+xseq3<-seq(from=0, to=1, by=1) 
+# Get the density values for the binomial distribution
+densities3<-dbinom(x=xseq3, size=1, prob=0.5) 
+# Plot the density
+plot(x=xseq3, y=densities3, col="darkgreen", xlab="", ylab="Density", type="h", lwd=2, cex=1, main="PMF of Binomial(1,0.5)", cex.axis=.8) 
+
+# Take random draws from a binomial(1,0.5) distribution
+randomdeviates3<-rbinom(n=1000, size=1, prob=0.5) 
+# Barplot of binomial draws
+barplot(height=table(randomdeviates3), main="Random Draws from Binomial(1,0.5)", col="darkorange", cex.axis=.8, xlim=c(0,2)) 
+```
+
+\  
+
+**Exercise 3** 
+What happens to the distribution when the probability of success decreases to 0.1 in a single trial?
+
+\  
+
+```{r fig.width = 5, include=FALSE, echo=FALSE}
+# Specify seed for random number generation
+set.seed(seed=7321) 
+
+# Generate a regular sequence of numbers
+xseq4<-seq(from=0, to=1, by=1) 
+# Get the density values for the binomial distribution
+densities4<-dbinom(x=xseq4, size=1, prob=0.1)  
+# Plot the density
+plot(x=xseq4, y=densities4, col="darkgreen", xlab="", ylab="Density", type="h", lwd=2, cex=1, main="PMF of Binomial(0.1)", cex.axis=.8) 
+
+# Take random draws from a binomial(1,0.5) distribution
+randomdeviates4<-rbinom(n=1000, size=1, prob=0.1) 
+# Barplot of binomial draws
+barplot(table(randomdeviates4), main="Random Draws from Binomial(1,0.1)", col="darkorange", cex.axis=.8, xlim=c(0,2)) 
+```
+
+\newpage
+
+## Poisson
+The Poisson distribution represents the number of events that occur in a specified time, or other metric such as an area. It is represented by a single parameter lambda, which represents the mean rate of occurrence.
+
+\  
+
+```{r fig.width = 5}
+# Specify seed for random number generation
+set.seed(seed=8321) 
+
+# Generate a regular sequence of numbers
+xseq5<-seq(from=0, to=100, by=1) 
+# Get the density values for the Poisson distribution
+densities5<-dpois(x=xseq5, lambda=5) 
+# Plot the density
+plot(x=xseq5, y=densities5, col="darkgreen", xlab="", ylab="Density", type="h", lwd=2, cex=1, main="PMF of Poission(0.5)", cex.axis=.8, xlim=c(0,20)) 
+
+# Take random draws from a Poisson distribution
+randomdeviates5<-rpois(n=1000, lambda=5) 
+# Histogram of Poisson draws
+hist(x=randomdeviates5, main="Random Draws from Poisson(5)", col="darkorange", cex.axis=.8, xlab="x", xlim=c(0,20)) 
+```
+
+\  
+
+## Let's revisit an example from earlier
+
+```{r}
+
+# Create some fake count data with mean = 1
+set.seed(54)
+tumor_count = data.frame(x = rpois(30, 1))
+
+# Calculate mean
+mean(tumor_count$x)
+
+# Calculate normal distribution standard deviation
+sd(tumor_count$x)
+
+barplot(table(tumor_count$x))
+```
+
+\  
+
+The Poisson distribution has a major limitation - it assumes the mean equals the variance. Often count data exhibit what we call *overdispersion*, i.e., the variance exceeds the mean, violating the Poisson requirement.
+
+\newpage
+
+## Negative Binomial
+The negative binomial model extends the Poisson model by allowing the mean and variance to be different.
+
+\  
+
+```{r fig.width = 5}
+# Specify seed for random number generation
+set.seed(seed=9321) 
+
+# Generate a regular sequence of numbers
+xseq6<-seq(from=0, to=100, by=1) 
+# Get the density values for the negative binomial distribution
+densities6<-dnbinom(x=xseq5, mu=5, size=6) 
+# Plot the density
+plot(x=xseq6, y=densities6, col="darkgreen", xlab="", ylab="Density", type="h", lwd=2, cex=1, main="PMF of Negative Binomial(5,6)", cex.axis=.8, xlim=c(0,20)) 
+
+# Take random draws from a negative binomial distribution
+randomdeviates6<-rnbinom(n=1000, mu=5, size=6)
+# Histogram of negative binomial draws
+hist(x=randomdeviates6, main="Random Draws from Negative Binomial (5,6)", col="darkorange", cex.axis=.8, xlab="x", xlim=c(0,20)) 
+```
+
+\newpage  
+
+Let's revisit the viral load example.
+
+\  
+
+```{r}
+hist(viralLoad) # Look at the distribution of viral load
+hist(log(viralLoad+1,base=exp(1))) # Look at log-transformed viral loads
+hist(viralLoad[viralLoad>0]) # Look at the distribution of viral loads greater than 0
+hist(log(viralLoad[viralLoad>0],base=exp(1))) # Look at log-transformed viral loads greater than 0
+```
+
+\  
+
+## What can go wrong?
+
+In trying to identify a distribution that is appropriate for your data, you can run into a number of issues. We will discuss three common issues.
+
+\  
+
+### Your data result from a mixture of data generation processes.
+
+If you are examining your data without accounting for an important factor (e.g., disease status, sex, age), by mixing the data, you can get very unusual distributions and multiple modes.
+
+Let's go back and look at that systolic blood pressure data again.
+
+\  
+
+```{r}
+hist(sbp$sbp, xlim=c(50,250))
+hist(x=sbp$sbp[sbp$overwt=="1"], xlim=c(50,250))
+hist(x=sbp$sbp[sbp$overwt=="2"], xlim=c(50,250))
+hist(x=sbp$sbp[sbp$overwt=="3"], xlim=c(50,250))
+```
+
+\  
+
+### You have correlations in your data that aren't being accounted for, e.g., data measured longitudinally or spatially from the same experimental unit.
+
+The graphing and evaluation methods we have used so far assume you are working with independent data. If your data are not independent, e.g., data measured longitudinally or spatially from the same experimental unit, you generally underestimate the amount of variability in the data. The result is you tend to overstate the precision of your findings, e.g., confidence intervals are too short.
+
+\  
+
+### You have more zeroes than expected. Note: This may be a special case of 1).
+```{r}
+# Look at the distribution of viral load
+hist(viralLoad) 
+```
+
+\  
+
+The Poisson and negative binomial distributions allow for the presence of some zero values. What if you have more than expected? There are zero-inflated and zero-altered (hurdle) versions of each of these distributions.
+
+The zero-inflated distribution assumes that the zero observations have two different origins: structural and sampling. The sampling zeros are due to the usual Poisson (or negative binomial) distribution, which assumes that those zero observations happened by chance. Zero-inflated distributions assume that some zeros are observed due to some specific structure in the data. The remaining data follow a Poisson or negative binomial distribution. 
+
+The hurdle version of the distributions instead assumes that all zero data are from one structural source. The positive non-zero data follow either a zero-truncated Poisson or zero-truncated negative-binomial distribution. Zero-truncated distributions are like the original distributions except that they can only take on positive values.
+
+\  
+
+We need the package VGAM to access these additional distributions.
+
+Distribution                    | R Name
+--------------------------------|-------
+Zero-inflated Poisson           | zipois
+Zero-inflated negative binomial | zinegbin          
+Zero-altered Poisson            | zapois
+Zero-altered negative binomial | zanegbin
+
+\  
+
+```{r}
+library(VGAM)
+```
+
+\  
+
+## What about testing to see how well things fit?
+There are lots of *goodness-of-fit* tests. The Kolmogorov-Smirnov, Anderson-Darling, and Shapiro-Wilk tests all allow you to assess goodness-of-fit for specific distributions. However, these tests tend to have greatest power when they are needed the least, when you have a large sample size. When your sample size is large, you can use graphical methods to assess goodness-of-fit. When your sample size is small, these tests can be underpowered and are of limited use. Never conduct these tests in the absence of looking at your data. When your sample size is too small to use graphical methods, you may not be able to check distributional assumptions. Thus, one suggestion is to use what are known as *distribution-free* or *nonparametric methods*. **Be aware that distribution-free methods are not assumption free.**
+
+\  
+
+## Can I remove unusual values to meet distributional assumptions?
+Data should be unusual in terms of being scientifically impossible versus deviating from distributional assumptions. Thus, while EDA can help identify potential outliers in data, you shouldn’t remove data simply to make distributional assumptions hold. You should choose a distribution that is representative of as much of your data as possible. If you do remove suspect data it is almost always advisable to perform a *sensitivity analysis* unless they are outright errors for further analyses. Even better, if you can establish some reasonable ranges for values (say for an assay) before you see the data you don’t end up with the narcissism of small differences in determining if something is an outlier. 
+
+\  
+
+## Summary Statistics for Distributions
+As discussed in Week 1, when you can assume your data are approximately normal, the sample average and standard deviation are reasonable summaries of your underlying data. What about for non-normal distributions?
+
+For distributions that are symmetric and unimodal, the mean and standard deviation are still reasonable summaries. For distributions that are skewed, better summaries are the quartiles (25th percentile, median, 75th percentile).
+
+\  
+
+## What if you would like to reflect uncertainty in a summary of your data?
+
+Imagine now you have summarized your data, but you would like to know how to reflect uncertainty in a sample mean for continuous data or a proportion for categorical data?
+
+We can do that - it is the *standard error* (SE). The standard deviation (SD) measures the variability of individual data values in a sample. E.g., SD is used to measure the variability in demographics used to describe a sample.
+
+SE measures the precision of a summary, such as the sample mean. E.g., SE is used to measure the variability in an average treatment response. SE is an inferential statistic.
+
+We can use the SE to help build a *confidence interval.* You can think of the confidence interval as a plausible range of values for a population measure (e.g. a mean or proportion). 
+
+The confidence interval is constructed to provide a high percentage of “confidence” that the true value of the population measure lies within it. 
+
+The most commonly used percentage is 95%, but there is nothing magical about that number. How do we build a confidence interval? The width of the confidence interval depends on the standard error, and a multiplier that depends on the distribution and the level of confidence:
+
+\  
+
+**Summary +/- Multiplier x SE**
+
+\  
+
+The Multiplier x SE component is known as the *margin of error*.
+
+If you want to be more confident, you make your confidence interval wider. If you are OK with being less confident your confidence interval will be smaller.
+
+\  
+
+Let's look at the difference between a confidence interval for individual values versus the confidence interval for the mean going back to the systolic blood pressure example.
+
+\  
+
+```{r}
+library(plotrix)
+
+# Estimate the mean systolic blood pressure
+est_mean<-mean(sbp$sbp)
+
+# Calculate the margin of error for the mean
+moe_mean<-qnorm(0.975)*std.error(sbp$sbp)
+# Calculate the lower limit of the CI for the mean
+ll_ci_mean<-est_mean-moe_mean
+# Calculate the upper limit of the CI for the mean
+ul_ci_mean<-est_mean+moe_mean
+
+# Calculate the margin of error for individual SBP values
+moe_ind<-qnorm(0.975)*sd(sbp$sbp)
+# Calculate the lower limit of the CI for the individual values
+ll_ci_ind<-est_mean-moe_ind
+# Calculate the upper limit of the CI for the individual values
+ul_ci_ind<-est_mean+moe_ind
+
+# Plot the two confidence intervals side by side
+plot(x=1, y=est_mean, xlim=c(0,3), xlab="", ylab="SBP")
+segments(x0=1,y0=ll_ci_ind,x1=1,y1=ul_ci_ind)
+points(x=2,y=est_mean)
+segments(x0=2,y0=ll_ci_mean,x1=2,y1=ul_ci_mean)
+```
+
+\  
+
+**Exercise 4**
+Try repeating the example above with a different level of confidence. 
+
+\  
+
+Now let's look at confidence intervals for a proportion using the viral load data.
+
+\  
+
+```{r}
+# Proportion of patients with zero viral load of HCV
+
+est_p<-0.53
+n<-500
+
+#Calculate the standard error
+se_p<-sqrt(est_p*(1-est_p)/n)
+
+# Calculate the margin of error for the proportion
+moe_p<-qnorm(0.975)*se_p
+# Calculate the lower limit of the CI for the proportion
+ll_ci_p<-est_p-moe_p
+# Calculate the upper limit of the CI for the proportion
+ul_ci_p<-est_p+moe_p
+
+
+# Plot the confidence interval
+plot(x=1, y=est_p, xlim=c(0,3), ylim=c(0,1), xlab="", ylab="Proportion with zero viral load")
+segments(x0=1,y0=ll_ci_p,x1=1,y1=ul_ci_p)
+
+# In a new sample of 500 patients with experimental treatment, 
+# the proportion with zero viral load increases to 0.70
+newest_p<-0.70
+newse_p<-sqrt(newest_p*(1-newest_p)/n)
+newmoe_p<-qnorm(0.975)*newse_p
+newll_ci_p<-newest_p-newmoe_p
+newul_ci_p<-newest_p+newmoe_p
+
+points(x=2,y=newest_p)
+segments(x0=2,y0=newll_ci_p,x1=2,y1=newul_ci_p)
+```
+
+\  
+
+**Exercise 5**
+
+Try repeating the example above with different values of the proportion and/or sample size. 
+
+\newpage  
+
+***  
+# Homework
+
+1. Revisiting the first homework problem from the first week of class, return to your visual summary of a numeric variable. Does the variable appear to be symmetric? Does it have a single mode? Do you think it looks approximately normally distributed?
+
+2. Identify some variables you commonly work with that might be represented by a binomial distribution.
+
+3. Identify some count variables you commonly work with that might be represented by Poisson or negative binomial distributions.
+
+4. Repeat Exercise 4 using the BMI variable in the SBP data set.
+
+5. Using the brain surgery data below, which represents differences in intelligence before and after surgery for short duration and long duration seizure patients, look at how different results could be by chance, assuming the outcomes are normally distributed by running the code below. 
+
+\  
+
+```{r hw5, results="hide", fig.show="hide"}
+# Short Duration group with some negative deltas
+# Study n was 6, mean was 12, sd was 7.51
+set.seed(1111) 
+short_1111 = round(rnorm(6, 12, 7.51), 0)
+hist(short_1111)
+ 
+# Long Duration group with mostly positive deltas
+# Study n was 5, mean was -1.4, sd was 11.63
+set.seed(72)
+long_72 = round(rnorm(5, -1.4, 11.63), 0)
+hist(long_72)
+ 
+# Take several samples to see what it could have looked like
+hist(round(rnorm(6, 12, 7.51), 0), main = "Short")
+hist(round(rnorm(5, -1.4, 11.63), 0), main = "Long")
+hist(round(rnorm(6, 12, 7.51), 0), main = "Short")
+hist(round(rnorm(5, -1.4, 11.63), 0), main = "Long")
+hist(round(rnorm(6, 12, 7.51), 0), main = "Short")
+hist(round(rnorm(5, -1.4, 11.63), 0), main = "Long")
+hist(round(rnorm(6, 12, 7.51), 0), main = "Short")
+hist(round(rnorm(5, -1.4, 11.63), 0), main = "Long")
+```
+
+***
+
+*End of file*  

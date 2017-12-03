@@ -1,0 +1,940 @@
+---
+title: |
+  | Statistical Literacy for Biologists, Week 3
+  | Philosophies of Statistical Inference
+author: "Dwight Barry"
+date: "13 October 2017"
+output: 
+  pdf_document: 
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, fig.align = "center")
+
+library(htmlTable)  # txtRound function
+```
+
+\  
+
+***  
+*This case study is adapted from:*  
+
+Shurtleff et al. 2015. *Impact of epilepsy surgery on development of preschool children: identification of a cohort likely to benefit from early intervention.* Journal of Neurosurgery: Pediatrics 16(4): 383-392. http://dx.doi.org/10.3171/2015.3.PEDS14359  
+
+*** 
+
+# The study
+
+Cognitive outcome after focal surgical resection was retrospectively reviewed for 15 cognitively intact children operated on between 2 and 6 years of age for lesion-related, early-onset epilepsy.  
+
+Wechsler intelligence tests were conducted prior to and after surgery to explore differences in intelligence between short versus long duration of seizures prior to surgical resection.  
+
+\  
+
+***The practical question***  
+
+Does time from diagnosis to treatment matter for cognitive outcomes?  
+
+- Literature is mixed, partially due to heterogeneous subjects.   
+- This study focused on a more homogeneous group than seen in other lit.   
+- *Rare* conditions: *n*=15 patients over a 15 year period, *n*=11 patients having both pre/post test scores.  
+
+\  
+
+***The practical answer*** 
+
+*Probably?* "...shorter seizure duration prior to resection can result in improved cognitive outcome, suggesting that surgery for this population should occur sooner to help improve intelligence outcomes."  
+
+\  
+
+***Why we concluded this***  
+
+"Patients who had surgery within 6 months of onset generally had better outcomes compared with patients who had longer duration from the onset of seizures prior to resection.  
+
+While we did not detect statistically significant differences ... clinically important improvements for the short duration group occurred in both FSIQ and nonverbal scores; FSIQ and nonverbal scores improved by 13 and 14 points on average, respectively."  
+
+## Data acquisition and cleaning
+
+### Load packages
+
+```{r}
+library(reshape2)   # manipulate data frames
+library(knitr)      # formatted tables
+library(psych)      # summary statistics
+library(boot)       # bootstrapping
+library(coin)       # permutation tests
+library(BEST)       # Bayesian analysis
+library(AICcmodavg) # Information-Theoretic analysis
+library(tidyverse)  # ggplot2, dplyr, etc.
+library(forcats)    # category helper for ggplot
+```
+
+### Load raw data
+
+The data is directly from *Table 2* in the JN:P paper, and is in *long* format, with 1 patient on each line.  
+
+```{r cache=TRUE}
+DataLong = read.csv("https://raw.githubusercontent.com/Rmadillo/SCH_R_Training/master/Diff_Inf/Shurtleffetal2015_episurg_data.csv", header = T)
+```
+
+
+### Clean and prep data
+
+We will only use FSIQ scores in the workshop, but the entire analysis can be repeated with verbal and non-verbal scores as well.  
+
+We'll start by converting from *long* to *wide* format for the data frame so that we can calculate a change in score.  
+
+```{r}
+# Order the Phase factor so Pre comes before Post
+DataLong$Phase = ordered(DataLong$Phase, levels = c("Pre", "Post"))
+
+# Reshape main data to wide format and calculate change in score from Pre to Post
+DataWideFSIQ = dcast(DataLong, ID + Side + Duration ~ Phase, value.var = "FSIQ")
+DataWideFSIQ$FSIQD = DataWideFSIQ$Post - DataWideFSIQ$Pre
+
+# Remove the Pre and Post columns from each
+#DataWideFSIQ = DataWideFSIQ[,c(1:3,6)]
+
+# Remove NAs to get data for patients w/ both pre/post scores only
+DataWideD = na.omit(DataWideFSIQ)
+```
+
+
+# EDA (Weeks 1 & 2 reprise)
+
+### Distribution of FSIQ scores
+
+```{r fig.height=2.5}
+# Density plot
+ggplot(DataLong, aes(x = FSIQ, fill = Duration)) +
+    geom_density(alpha = 0.5) +
+    facet_wrap(~ Phase) +
+    # shortcut to get rid of y-axis
+    scale_y_continuous(NULL, breaks = NULL) +
+    theme_bw()
+```
+
+```{r fig.height=1.5}
+# Dot histogram
+ggplot(DataLong, aes(x = FSIQ, fill = Duration)) +
+    geom_dotplot(method = "histodot", stackgroups = TRUE) +
+    facet_wrap(~ Phase) +
+    scale_y_continuous(NULL, breaks = NULL) +
+    theme_bw()
+```
+
+```{r}
+# Table of summary stats for FSIQ scores (pre/post surgery)  
+sum_stat_table = describeBy(list(DataWideD$Pre, DataWideD$Post), DataWideD$Duration, 
+    skew = FALSE, quant = c(0.25, 0.50, 0.75), IQR = TRUE, mat = TRUE, digits = 1)
+kable(sum_stat_table, row.names = FALSE)
+```
+
+
+### Distribution of difference ($\Delta$) in FSIQ scores (pre/post surgery)
+
+```{r fig.height=3.5}
+# Density and dot histogram plot together
+p1 = ggplot(DataWideD, aes(x = FSIQD, fill = Duration)) +
+    geom_density(alpha = 0.5) +
+    # Expand x-axis for inference
+    xlim(-40, 40) +
+    xlab("") +
+    scale_y_continuous(NULL, breaks = NULL) +
+    theme_bw()
+
+p2 = ggplot(DataWideD, aes(x = FSIQD, fill = Duration)) +
+    xlim(-40, 40) +
+    geom_dotplot(method = "histodot", stackgroups = TRUE) +
+    scale_y_continuous(NULL, breaks = NULL) +
+    xlab(expression(paste(Delta, ' FSIQ'))) +
+    theme_bw()
+
+gridExtra::grid.arrange(p1, p2, ncol = 1, heights = c(0.7, 0.3))
+```
+
+```{r}
+# Table of summary stats for *change* in FSIQ scores (pre/post surgery) 
+sum_stat_delta_table = describeBy(DataWideD$FSIQD, DataWideD$Duration, 
+    skew = FALSE, quant = c(0.25, 0.50, 0.75), IQR = TRUE, mat = TRUE, digits = 1)
+kable(sum_stat_delta_table, row.names = FALSE)
+```
+
+\  
+
+\  
+
+***  
+
+#### Exercise 1
+
+Use the basic EDA methods from Weeks 1 and 2 (e.g., as done above) to explore the **nonverbal IQ** scores and pre/post changes between the *Long* and *Short* `Duration` groups. What can you determine from this? 
+
+```{r}
+# Use this code to get the nonverbal scores into wide format
+DataWideNVIQ = dcast(DataLong, ID + Side + Duration ~ Phase, value.var = "Nonverbal")
+DataWideNVIQ$NVIQD = DataWideNVIQ$Post - DataWideNVIQ$Pre
+DataWideNVIQ = na.omit(DataWideNVIQ)
+```
+
+```{r include = FALSE}
+# Ex 1
+ex1_p1 = ggplot(DataWideNVIQ, aes(x = NVIQD, fill = Duration)) +
+    geom_density(alpha = 0.5) +
+    xlim(-40, 40) +
+    xlab("") +
+    scale_y_continuous(NULL, breaks = NULL) +
+    theme_bw()
+
+ex1_p2 = ggplot(DataWideNVIQ, aes(x = NVIQD, fill = Duration)) +
+    xlim(-40, 40) +
+    geom_dotplot(method = "histodot", stackgroups = TRUE) +
+    scale_y_continuous(NULL, breaks = NULL) +
+    xlab(expression(paste(Delta, ' FSIQ'))) +
+    theme_bw()
+
+gridExtra::grid.arrange(ex1_p1, ex1_p2, ncol = 1, heights = c(0.75, 0.25))
+
+describeBy(DataWideNVIQ$NVIQD, DataWideNVIQ$Duration, skew = FALSE, quant = c(0.25, 0.50, 0.75), IQR = TRUE, mat = TRUE, digits = 1)
+```
+
+
+***  
+
+\  
+
+\  
+
+### EDA at the subject level---some new, some old
+
+There are so many ways to plot the same data, and we've just covered some of the major ones in this course. In Week 1 we looked at dotplots as a form of barplots for a single variable; here we'll expand that idea slightly to use it for two variables, change in FSIQ by the `Duration` group, using each patient's data instead of on summary data.
+
+```{r fig.height=2}
+# Dotplot
+ggplot(DataWideD, aes(ID, FSIQD, color = Duration, fill = Duration)) +
+    geom_bar(stat = "identity", width = 0.02) +
+    geom_point(size = 4) +
+    coord_flip()
+```
+
+The ordering by the patient ID (which has no real meaning) is distracting, so let's order by the `FSIQD` value, using the `fct_reorder` function from `forcats`:
+
+```{r fig.height=3.25}
+# Ordered dotplot
+ggplot(DataWideD, aes(fct_reorder(as.factor(ID), FSIQD), FSIQD, color = Duration, fill = Duration)) +
+    labs(y = expression(paste(Delta, " FSIQ")), x = "Subject (ordered by change in FSIQ)", 
+         color = "Time to\ntreatment", fill = "Time to\ntreatment") +
+    geom_hline(yintercept = 0, color = "gray50") +
+    geom_bar(stat = "identity", width = 0.02) +
+    geom_point(size = 4) +
+    coord_flip()
+```
+
+That gives the result of each subject's response and a general sense of the grouping effect. But doesn't show us where the individuals started and ended, just their level of change. A dumbbell plot---a two-ended dotplot---can give that information, using the bar between the points as an indicator of change. We can also add (back) in the patients who did not have a pre-surgery test, and put in a "normal IQ" indicator band, as additional reference points.     
+
+```{r fig.height=3}
+# Dumbbell plot
+ggplot(DataWideFSIQ, aes(fct_reorder(as.factor(ID), Post), Post)) +
+    # Add in a reference block for "normal IQ"
+    geom_rect(xmin = -Inf, xmax = Inf, ymin = 85, ymax = 115, fill = "gray90", alpha = 0.05) +
+    # The dumbbell's "bar"
+    geom_segment(aes(x = fct_reorder(as.factor(ID), Post),
+                     xend = fct_reorder(as.factor(ID), Post), 
+                     y = Pre, yend = Post, color = Duration), 
+                     size = 1.5, alpha = 0.4) +
+    # The dumbbell's "weights"
+    geom_point(aes(y = Pre, color = Duration, fill = Duration), size = 2.5, alpha = 0.75) +
+    geom_point(aes(y = Post, color = Duration, fill = Duration), size = 4) +
+    # Plot tidying
+    labs(y = "FSIQ", x = "Subject ID\n(ordered by post-surgery FSIQ)", 
+         color = "Time to\ntreatment", fill = "Time to\ntreatment") +
+    coord_flip() +
+    theme_bw()
+```
+
+Parallel coordinates is another way to show direction and magnitude of change, and with only 2 groups, doesn't become as messy as multi-variate parallel coordinates---so a static plot still works for interpretation.  
+
+```{r fig.width=3.5, fig.height=3}
+# Parallel coordinates plot
+ggplot(DataLong, aes(Phase, FSIQ, group = ID, color = Duration)) +
+    geom_line(alpha = 0.6) +
+    geom_point(aes(shape = Duration), alpha = 0.8) +
+    scale_x_discrete(expand = c(0.1, 0.1)) +
+    theme_bw()
+```
+
+\  
+
+
+***
+
+#### Exercise 2
+
+Using the `DataWideD` data frame, create a scatterplot of the `Post` score by the `Pre` score, sizing the points by `FSIQD` and coloring them by `Duration`. What does this plot tell you, if anything?
+
+```{r include = FALSE}
+# Ex 2
+ggplot(DataWideD, aes(Pre, Post, color = Duration)) +
+    geom_point(aes(size = FSIQD))
+```
+
+***  
+
+\newpage
+
+# Basic Inference 1: Frequentist Inference, *p*-values, and $\alpha$ levels
+
+***   
+\begin{center}
+  \textbf{Philosophy: probability is long term frequency, and we want to make decisions that reduce errors in the long run.}  
+\end{center} 
+***  
+
+## Inference on a difference in means: the *t*-test
+
+The [*t*-test is the classic frequentist test](http://blog.minitab.com/blog/michelle-paret/guinness-t-tests-and-proving-a-pint-really-does-taste-better-in-ireland) to determine whether there is a statistically significant difference in means between two groups---in other words, whether the *expected value* for either group is *statistically* different. In the terms of our case study, we're basically asking "Does faster time to treatment improve cognitive outcome, *on average*?"  
+
+```{r}
+# The basic t-test 
+t.test(FSIQD ~ Duration, data = DataWideD)
+```
+
+\  
+
+So what can we conclude, relative to whether time from diagnosis to treatment matters?    
+
+#### Assumptions  
+
+Most statistical tests *depend critically* on assumptions. Assuring that your data reasonably meet those assumptions is **not optional**!  
+
+This is what the *t*-test implies (code not shown):  
+
+```{r echo = FALSE, fig.height=2.5, fig.width=4}
+ggplot(DataWideD, aes(x = FSIQD)) +
+    xlim(-40, 40) +
+    geom_vline(data = filter(DataWideD, Duration == "Long"), 
+        aes(xintercept = mean(FSIQD)), color = "red", linetype = "dashed") +
+    stat_function(data = filter(DataWideD, Duration == "Long"),
+        fun = dnorm, 
+        color = "red",
+        args = list(mean = mean(filter(DataWideD, Duration == "Long")$FSIQD), 
+                    sd = sd(filter(DataWideD, Duration == "Long")$FSIQD))) +
+    geom_vline(data = filter(DataWideD, Duration == "Short"), 
+        aes(xintercept = mean(FSIQD)), color = "darkblue", linetype = "dashed") +
+    stat_function(data = filter(DataWideD, Duration == "Short"),
+        fun = dnorm, 
+        color = "darkblue",
+        args = list(mean = mean(filter(DataWideD, Duration == "Short")$FSIQD), 
+                    sd = sd(filter(DataWideD, Duration == "Short")$FSIQD))) +
+    scale_y_continuous(NULL, breaks = NULL) +
+    xlab(expression(paste(Delta, ' FSIQ'))) 
+```
+
+And here is that implication overlaid on the density of the actual data (code not shown):  
+
+```{r echo = FALSE, fig.height=3.25, fig.width=4.5}
+ggplot(DataWideD, aes(x = FSIQD)) +
+        geom_density(aes(color = Duration, fill = Duration), alpha = 0.5) +
+    xlim(-40, 40) +
+    geom_vline(data = filter(DataWideD, Duration == "Long"), 
+        aes(xintercept = mean(FSIQD)), color = "red", linetype = "dashed") +
+    stat_function(data = filter(DataWideD, Duration == "Long"),
+        fun = dnorm, 
+        color = "red",
+        args = list(mean = mean(filter(DataWideD, Duration == "Long")$FSIQD), 
+                    sd = sd(filter(DataWideD, Duration == "Long")$FSIQD))) +
+    geom_vline(data = filter(DataWideD, Duration == "Short"), 
+        aes(xintercept = mean(FSIQD)), color = "darkblue", linetype = "dashed") +
+    stat_function(data = filter(DataWideD, Duration == "Short"),
+        fun = dnorm, 
+        color = "darkblue",
+        args = list(mean = mean(filter(DataWideD, Duration == "Short")$FSIQD), 
+                    sd = sd(filter(DataWideD, Duration == "Short")$FSIQD))) +
+    scale_y_continuous(NULL, breaks = NULL) +
+    xlab(expression(paste(Delta, ' FSIQ'))) +
+    theme(legend.position = "top")
+```
+
+The default *t*-test in R is conservative, in that it automatically assumes that the variances between the two groups are different. What happens when we test, then relax, that assumption?  
+
+```{r}
+# Are the variances equal? (DON'T DO THIS IN REAL LIFE!)
+var.test(FSIQD ~ Duration, data = DataWideD)
+
+# t-test, and assume that the variances are equal
+t.test(FSIQD ~ Duration, data = DataWideD, var.equal = TRUE)
+```
+
+*Now what do we decide?!?*
+
+\newpage
+
+*** 
+
+#### Exercise 3
+
+Run each type of *t*-test on the *Nonverbal* score differences. What conclusion does each lead you to?  
+
+```{r include=FALSE}
+# Ex 3
+t.test(NVIQD ~ Duration, data = DataWideNVIQ)
+t.test(NVIQD ~ Duration, data = DataWideNVIQ, var.equal = TRUE)
+```
+
+
+***  
+
+\  
+
+\  
+
+## Frequentist *p*-values
+
+In fact, there are many statistical tests by which you can calculate a *p*-value on the mean difference between two groups---so which one is actually *correct*?  
+
+```{r}
+# A variety of frequentist tests
+FSIQ.t1 = t.test(FSIQD ~ Duration, data = DataWideD)
+FSIQ.t2 = t.test(FSIQD ~ Duration, data = DataWideD, var.equal = T)
+FSIQ.t3 = wilcox_test(FSIQD ~ Duration, data = DataWideD)
+FSIQ.t4 = wilcox_test(FSIQD ~ Duration, data = DataWideD, distribution = "exact")
+FSIQ.perm = oneway_test(FSIQD ~ Duration, data = DataWideD, distribution = "exact")
+FSIQ.lm1 = lm(FSIQD ~ Duration, data = DataWideD)
+```
+
+
+| Test Type | *p*-value |
+| :------------- | --------------:|
+| *t*-test, equal variances | `r txtRound(FSIQ.t2$p.value, 3)` | 
+| *t*-test, unequal variances | `r txtRound(FSIQ.t1$p.value, 3)` | 
+| Permutation test | `r txtRound(pvalue(FSIQ.perm), 3)` | 
+| Mann-Whitney-Wilcoxon (asymptotic) | `r txtRound(pvalue(FSIQ.t3), 3)` |
+| Mann-Whitney-Wilcoxon (exact) | `r txtRound(pvalue(FSIQ.t4), 3)` | 
+| Linear model/regression (F-test) | `r txtRound(summary(FSIQ.lm1)$coefficients[2,4], 3)` |
+
+\  
+
+What about adjusting for multiple testing (remember the jelly bean experiment)? If we take the best *p*-value above, and consider that we've done three hypothesis tests in our experiment, there are several methods we can use to adjust the "raw" *p*-value for the FSIQ difference by `Duration` *t*-test.  
+
+```{r}
+# p-value adjustment
+# using p-values for other comparisons in this experiment
+p = c(0.046, 0.444, 0.05)
+pbon = p.adjust(p, method = c("bonferroni"))
+pholm = p.adjust(p, method = c("holm"))
+pfdr = p.adjust(p, method = c("fdr"))
+```
+
+
+| Adjustment type | Adjusted *p*-value |
+| :------------- | --------------:|
+| Bonferroni (easy math) | `r pbon[1]` | 
+| Holm (conservative) | `r pholm[1]` | 
+| False Discovery Rate (liberal) | `r pfdr[1]` |
+
+\  
+
+We now have 9 methods giving us 7 different *p*-values! *What do we do?!?*    
+
+
+## Well, what *is* a *p*-value, anyway?  
+
+Let's back up a bit and consider the history and philosophies behind frequentist statistics.  
+
+Karl Popper, perhaps the most influential philosopher of science, suggested that the only way science could truly advance was through falsification; Sir Richard Fisher, Jerzy Neyman, and Egon Pearson are the three who created the statistical methods that would fit within Popper's framework 
+
+We'll explore their approaches in a moment, but first, a little thought experiment: consider a set of statements regarding an experiment in which a statistically-significant result was attained. 
+
+\  
+
+\  
+
+*** 
+
+#### Exercise 4 
+
+Suppose you have a treatment that you suspect may alter performance on a certain task. You compare the means of your control and experimental groups (say 20 subjects in each sample). Further, suppose you use a simple independent means t-test and your result is (t = 2.7, d.f. = 18, p = 0.01). 
+
+Please mark each of the statements below as "true" or "false". "False" means that the statement does not follow logically from the above premises. Also note that all, several, or none of the statements may be correct.    
+
+| Statement | Your Answer |
+| --------------------------------------------------------- |:-----------------:|
+| &bull; You have absolutely disproved the null hypothesis (that is, there is no difference between the population means). | [___] true / false [___] |
+| &bull; You have proved your experimental hypothesis (that there is a difference between the population means). | [___] true / false [___] | 
+| &bull; There is a 1% chance that the null hypothesis is true. | [___] true / false [___] | 
+| &bull; You can deduce the probability of the experimental hypothesis being true. | [___] true / false [___] | 
+| &bull; You can be 95% certain that your results are not due to chance. | [___] true / false [___] | 
+| &bull; You know, if you decide to reject the null hypothesis, the probability that you are making the wrong decision. | [___] true / false [___] | 
+| &bull; You have a reliable experimental finding in the sense that if, hypothetically, the experiment were repeated a great number of times, you would obtain a significant result on 99% of occasions. | [___] true / false [___] | 
+
+*** 
+
+\newpage 
+
+### Fisher's *p*-value
+
+*p* is the probability of seeing results equal to or more extreme than your own, given the truth of the null (i.e., no effect):
+
+*p* = (data | P[$H_0$ = 1.0])  
+
+*p* is an evidential probability intended to assist one in making a scientific inductive inference based on the results of experimentation.  
+
+If the chance of seeing your data given that in reality there is no effect is very small, you can *infer* that a more likely explanation of the result is that there is an effect. Said another way, Fisher's "p is measure of how embarrassing the data are to the null hypothesis." --F.E. Harrell (2007)  
+
+Further, the smaller the *p*-value, the less likely it is that chance is giving you the results in hand.  
+
+So, if an experiment obtained a low p-value, the reasoning to a conclusion usually goes something like this:
+
+- If $H_0$ is true, then this result is highly unlikely.  
+- This result has occurred.  
+- Therefore, $H_0$ is highly unlikely.  
+
+\  
+
+By this same logic:  
+
+- If this person is American, then this person is probably not a member of
+Congress.  
+- This person is a member of Congress.  
+- This person is probably not American.  
+
+\  
+
+To Fisher's credit, he had a slightly different view of what a low *p*-value meant:  
+
+- Assuming my results are due to chance, my obtained mean difference is very unlikely.  
+- Therefore, chance may not be the culprit.  
+- Therefore, I must employ other methods ("careful scientific reasoning") to determine what that culprit might be.  
+
+\  
+
+Still, it remains a logical fallacy.  
+
+### Neyman-Pearson's $\alpha$ level 
+
+If probability is long-run frequency, then single events cannot have probabilities. You can only make a decision on how to act, given the outcome. Thus, using *p* as in Fisher's approach is meaningless.  
+
+$\alpha$ is the probability of committing the error of falsely rejecting the null. The only relevant point of *p* is whether it falls below a **pre-determined** threshold (e.g., 0.05, 0.01, etc.)--it's actually only a mathematical convenience value, and holds no meaning otherwise.    
+
+Thus, a *p* of 0.0001 and a *p* of 0.049 have the same inferential meaning if $\alpha$ was set *a priori* to 0.05.  
+
+The interpretation is that *in the long run*, if you pick $\alpha$ = 0.05 as your threshold, you can expect that only 5 in 100 experiments performed in the same way on the same population would lead you to falsely reject the null. 
+
+This is also the basis for the definition of a confidence interval: 
+
+```{r echo = FALSE}
+knitr::include_graphics("CI_example.png")
+```
+
+There is a complementary level, $\beta$, that helps you determine the power that a statistical test will have. Together, they help ensure that *in the long run* you will see a reflection of the real world in your data far more often than you would see chance deviations from that reality.  
+
+### Null hypothesis significance testing
+
+Basically, if *p* < $\alpha$, reject the null. If *p* is really low, that's strong evidence of a real difference. 
+
+You see this implied *everywhere*. Problem is, this puts Fisher's *p* into the same framework as Neyman-Pearson's $\alpha$.  
+
+Since Fisher's *p* already assumes the truth of the null, the probability of falsely rejecting the null (i.e., an $\alpha$ level) is irrelevant ... so reporting an exact *p* relative to $\alpha$ is actually meaningless. 
+
+For this reason---and many, many others---some have proposed this ritual be renamed **S**tatistical **H**ypothesis **I**nference **T**esting, as a more useful and memorable acronym for this  conceptually incompatible mashup.   
+
+It goes further than conceptual validity, however:  
+
+\begin{quotation}
+...people have suffered or died because scientists (and editors, regulators, journalists and others) have used significance tests to interpret results. --\emph{Kenneth Rothman, epidemiologist at Boston University}
+\end{quotation}
+
+## Which to use?
+
+So if *p* and $\alpha$ are incompatible, which approach should we use?  
+
+Fisher claimed that Neyman & Pearson's method was ignorant of how science works; Neyman & Pearson countered that Fisher was ignorant of how math and logic worked. Unfortunately for Fisher, N&P were right---mathematicians and philosophers of science have repeatedly pointed out that if probability is indeed a reflection of long term frequency, the Neyman-Pearson approach is the only valid way to make inferences from single studies.  
+
+In industrial applications, this works great. In scientific research, where the chances to do multiple, highly-controlled experiments of samples derived from the same population are very, very limited, when possible at all... error control approaches aren't helpful, and are even counter-productive toward scientific advancement. 
+
+Further, the casual use of *either* approach has led to a crisis in science, with high-profile cases of accidental as well as outright fraud have made their way to major magazine and newspaper articles. Whether purposeful or accidental, "researcher degrees of freedom"[^1]---aka "*p*-hacking"[^2]---has rendered the use of any  *p*-values suspect, at best, to many. 
+
+[^1]: If you read *nothing else* related to the casual use of frequentist statistics, you should read Simmons et al. 2011, False-positive psychology: undisclosed flexibility in data collection and analysis allows presenting anything as significant. *Psychological Science* 22(11): 1359–1366. Available online at http://journals.sagepub.com/doi/pdf/10.1177/0956797611417632
+
+[^2]: https://projects.fivethirtyeight.com/p-hacking/
+
+As a result, more and more journals are starting to insist that researchers should report effect sizes and confidences intervals in addition to---or instead of---*p*-values. Further, more and more statisticians are (correctly) arguing that you should never start a study without a proper power analysis (another Neyman-Pearson tool, with Bayesian equivalents), and report both $\alpha$ and $\beta$ in your subsequent publications; we'll cover an intro to power analysis in the last workshop session.    
+
+### So what did we use, *p* or $\alpha$? 
+
+We reported *p* = 0.06 on $\Delta$ FSIQ in a table and simply stated in the text that it was not statistically significant, but that it was *clinically* significant. We were rejected from one journal that provided a N&P-oriented critique, and accepted by another ("with minor revisions") that implied the Fisherian approach was acceptible. (Note: I wouldn't do this approach again.) 
+
+\  
+
+# Basic Inference 2: Effect sizes and (frequentist) confidence intervals
+
+\begin{quotation}
+... rather than reporting isolated \emph{P} values, research articles should focus more on reporting effect sizes (eg, absolute and relative risks) and uncertainty metrics (eg, confidence intervals for the effect estimates).  --\emph{Journal of the American Medical Association}, 2016  
+\end{quotation}
+ 
+\  
+
+We'll cover effect sizes in detail next week, but we'll use a basic effect size---the difference between two means---here as part of exploring the issue of inferential philosophy and the interpretation of results.  
+
+```{r}
+# Difference in means (mean = "expected value") between two groups 
+sum_stat_delta_table$mean[1] - sum_stat_delta_table$mean[2]
+```
+
+So, the difference in means effect size is `r sum_stat_delta_table$mean[1] - sum_stat_delta_table$mean[2]`.  
+
+As you might expect, having some sort of visual of that effect size---*and a reflection of the uncertainty of that estimate* via confidence intervals---is key for inference.  
+
+```{r fig.height=3.5}
+# Means and their CIs plot
+mean_p1 = ggplot(DataWideD, aes(Duration, FSIQD, color = Duration)) + 
+    stat_summary(geom = "point", fun.y = mean) + 
+    stat_summary(geom = "errorbar", fun.data = mean_cl_normal, 
+                 width = 0.1) +
+    labs(y = expression(paste("Average ", Delta, " FSIQ")), x = "", 
+         color = "Time to\ntreatment") +
+    ylim(-30, 30) +
+    theme(legend.position = "left")
+
+# Difference in means with CI plot; first, create data frame w/ t-test output for CIs
+FSIQ_ttest = t.test(FSIQD ~ Duration, data = DataWideD)
+
+mean_diff_df = data.frame(Difference = "Difference",
+    Mean = FSIQ_ttest$estimate[1] - FSIQ_ttest$estimate[2],
+    Lower_CI = FSIQ_ttest$conf.int[1], Upper_CI = FSIQ_ttest$conf.int[2])
+
+mean_p2 = ggplot(mean_diff_df, aes(Difference, Mean)) +
+    geom_point() +
+    ylim(-30, 30) +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.1) +
+    labs(y = expression(paste("Difference between average ", Delta, " FSIQ")), x = "") 
+
+gridExtra::grid.arrange(mean_p1, mean_p2, ncol = 2, widths = c(0.75, 0.25))
+```
+
+\  
+
+We might summarize this analysis with that graph, along with some text along the lines of "the effect of being in the long duration group is `r sum_stat_delta_table$mean[1] - sum_stat_delta_table$mean[2]` FSIQ points (95%CI: `r txtRound(FSIQ_ttest$conf.int[1], 1)`, `r txtRound(FSIQ_ttest$conf.int[2], 1)`).  
+
+
+\  
+
+\  
+
+*** 
+
+#### Exercise 5 (Optional) 
+
+Using the nonverbal scores, plot the means and CIs, and mean difference with CI, side-by-side, as seen above. *Bonus points*: make the error bar a 90% CI.  
+
+```{r include = FALSE}
+# Ex 5
+nv_mean_p1 = ggplot(DataWideNVIQ, aes(Duration, NVIQD, color = Duration)) + 
+    stat_summary(geom = "point", fun.y = mean) + 
+    stat_summary(geom = "errorbar", fun.data = mean_cl_normal, 
+                 fun.args = list(conf.int = 0.90), width = 0.1) +
+    labs(y = expression(paste("Average ", Delta, " Nonverbal IQ")), x = "", 
+         color = "Time to\ntreatment") +
+    ylim(-30, 30) +
+    theme(legend.position = "left")
+
+NVIQ_ttest = t.test(NVIQD ~ Duration, data = DataWideNVIQ, conf.level = 0.90)
+nv_mean_diff_df = data.frame(Difference = "Difference",
+    Mean = NVIQ_ttest$estimate[1] - NVIQ_ttest$estimate[2],
+    Lower_CI = NVIQ_ttest$conf.int[1], Upper_CI = NVIQ_ttest$conf.int[2])
+
+nv_mean_p2 = ggplot(nv_mean_diff_df, aes(Difference, Mean)) +
+    geom_point() +
+    ylim(-30, 30) +
+    geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.1) +
+    labs(y = expression(paste("Difference between average ", Delta, " FSIQ")), x = "") 
+
+gridExtra::grid.arrange(nv_mean_p1, nv_mean_p2, ncol = 2, widths = c(0.75, 0.25))
+```
+
+*** 
+
+\newpage  
+
+# Basic Inference 3: Bayesian Inference
+
+***  
+\begin{center}
+  \textbf{Philosophy: probability is the likelihood of something happening, and we want to know how much we should believe something.}  
+\end{center} 
+***  
+
+Named for the Rev Thomas Bayes, who wrote out the theorem in a book published in 1763, the Bayesian approach provides the only inferential approach in which is it valid to claim that "there is a 95% chance that the true value is between *x* and *y*."  
+
+It wasn't until the last couple of decades that computers got fast enough to do the calculations needed to use Bayesian methods on complicated statistical problems, and the development of Markov-chain Monte Carlo ("MCMC") provided the mathematical tools to solve them. But this combination is so powerful that Bayesian methods have basically superseded frequentist methods in many areas of business and data science. 
+Its influence in research science has grown as well, albeit less quickly, particularly because Bayesian methods require that you first specify a "prior" distribution reflecting your existing knowledge of the situation---which can be extremely difficult to do when little is already known. Uninformative or weakly informative priors are used in those cases, but (compared with frequentist methods) this requires a good deal more understanding of the statistical principles at play, which has proven to be a barrier to wider adoption by researchers.     
+
+The `BEST` package provides an easy introduction to Bayesian analysis in the same context as a *t*-test, i.e., to test the difference between means; its accompanying paper[^3] is a great introductory overview of the philosophy and method, and is a great place to start if you've never explored the practical application of Bayesian statistics.   
+
+[^3]: Kruschke, JK. 2013. Bayesian estimation supersedes the t test. *Journal of Experimental Psychology: General* 142(2): 573-603. Available online at  http://www.indiana.edu/~kruschke/articles/Kruschke2013JEPG.pdf
+
+To use `BEST`, we need to break the data into vectors first.  
+
+```{r}
+# Subset into short and long data frames as BESTmcmc needs vectors
+short = filter(DataWideD, Duration == "Short")
+long = filter(DataWideD, Duration == "Long") 
+
+# Run the MCMC analysis, can take a few mins
+BEST_SvL_FSIQ = BESTmcmc(short$FSIQD, long$FSIQD)
+```
+
+Once it finishes running, we can explore the results. The visual results are the most rich, and for simplicity, we'll just look at the plot showing the difference between the two means. 
+
+**ROPE** stands for *region of practical equivalence*, which is the area in which you can specify that there is no *practical* (i.e., clinical) difference. Since IQ tests usually have a margin of error of about 2-3 points, we'll say 5 points either way is practically equivalent to no difference.  
+
+**HDI** is the *highest density interval*, which is the Bayesian counterpart to a confidence interval (and is often also called a "credible interval", but that is slightly different). Unlike confidence intervals, however, you can actually say that "there is a 95% chance that the true difference in means is within the HDI". 
+
+With those defined (use `?BESTmcmc` to get more details), we can explore the details in the plot: 
+
+```{r fig.height = 3.5}
+# Plot all results (not shown)
+# plotAll(BEST_SvL_FSIQ)
+
+# Plot difference in means result
+plot(BEST_SvL_FSIQ, ROPE = c(-5, 5))
+```
+
+
+You can also get a table summary of the results with the `summary` function; here, we'll also look at the standardized effect size (aka Cohen's *d*):  
+
+```{r}
+# Summary of results
+summary(BEST_SvL_FSIQ, ROPEm = c(-5, 5), compValeff = 0.5, ROPEeff = c(-0.25, 0.25))
+```
+
+One result of this analysis is a set of "posterior" distributions. We can access those to get a distribution of the probabilities seen in the above graph (or soft-code them, as seen in **bold** below the raw output):  
+
+```{r}
+# BEST output, distribution of differences between means distributions
+muDiff_SvL_FSIQ = BEST_SvL_FSIQ$mu1 - BEST_SvL_FSIQ$mu2
+
+# Estimate of true difference
+mean(muDiff_SvL_FSIQ)
+
+# Probability of having any improvement being in the short duration group
+mean(muDiff_SvL_FSIQ >= 0.01)
+
+# Probability of having improvement of at least 5 being in the short duration group
+mean(muDiff_SvL_FSIQ >= 5)
+
+# HDI on the difference between means
+hdi(BEST_SvL_FSIQ$mu1 - BEST_SvL_FSIQ$mu2)
+```
+
+\  
+
+So a summary of a Bayesian analysis for this case study might include:  
+
+The estimated true mean difference between the two populations is **`r txtRound(mean(muDiff_SvL_FSIQ),0)` (95% HDI: `r txtRound(hdi(BEST_SvL_FSIQ$mu1 - BEST_SvL_FSIQ$mu2)[1], 1)`, `r txtRound(hdi(BEST_SvL_FSIQ$mu1 - BEST_SvL_FSIQ$mu2)[2], 1)`)**.   
+
+The probability that there is any improvement in FSIQ by being in the short duration treatment group is **`r txtRound(mean(muDiff_SvL_FSIQ >= 0.01), 2)`**.  
+
+The probability that there is an improvement of at least 5 points in score by being in the short duration treatment group is **`r txtRound(mean(muDiff_SvL_FSIQ >= 5), 2)`**. 
+
+\  
+
+*** 
+
+#### Exercise 6 
+
+Run the BEST analysis for the nonverbal scores and produce the summary plot for a difference between group means. *Bonus points*: show a 90% HDI on the plot.  
+
+```{r include = FALSE}
+# Ex 6
+short_NVIQ = filter(DataWideNVIQ, Duration == "Short")
+long_NVIQ = filter(DataWideNVIQ, Duration == "Long") 
+
+BEST_SvL_NVIQ = BESTmcmc(short_NVIQ$NVIQD, long_NVIQ$NVIQD)
+
+plot(BEST_SvL_NVIQ, credMass = 0.90)
+```
+
+*** 
+
+\  
+
+\  
+
+# Basic Inference 4: Information-Theoretic Inference
+
+***  
+\begin{center}
+  \textbf{Philosophy: probability is long term frequency, but we want to understand the evidence the data provide.}  
+\end{center} 
+***  
+
+Information theory revolutionized modern society, providing (among other things) the theoretical basis for computers and communications, including the creation of the internet, digital music and photos, and ... dammit, that definitely means that it made Facebook possible... well, anyway, in spite of that, it also provides the foundation for what *may* become a way in which we can measure *evidence* in the same way that we measure *temperature*[^4]. 
+
+[^4]: Seriously. See https://www.karger.com/Article/PDF/367599, for example. 
+
+In the early 1970s, Japanese mathematician Hirotugu Akaike figured out the relationship between information theory and statistics, and by the early 2000s the "information-theoretic" approach was becoming a preferred alternative to frequentism in some scientific fields.  
+
+Unlike frequentist methods, and more like Bayesian methods, the I-T approach allows us to obtain the probability of a hypothesis, given the data. However, this approach requires that you define a model set, so the probability of a hypothesis is conditioned on the data *and* the model set. Unlike Bayesian methods, a "prior" is not part of the calculations, so it is seen by some as the most "objective" way to measure support for a given theory, hypothesis, or model with real-world data.  
+
+A good concise intro to I-T ideas and application (albiet in an environmental science context) is [Burnham et al. 2011, AIC model selection and multimodel inference in behavioral ecology] (https://link.springer.com/article/10.1007/s00265-010-1029-6); the classic text is [Burnham and Anderson 2002, Model Selection and Multimodel Inference: A Practical Information-Theoretic Approach](https://www.amazon.com/Model-Selection-Multimodel-Inference-Information-Theoretic/dp/0387953647). 
+
+We will use the `AICcmodavg` package for this example, though there are others available in R. 
+
+First, we set up the set of models we want to compare. Since in this case study we are comparing two groups, [we're still doing a *t*-test](https://sites.warnercnr.colostate.edu/anderson/wp-content/uploads/sites/26/2016/11/PDF-of-t_test_ANOVA_-with-I-T_final.pdf), only we're putting it into the context of regression---regression allows for a wide variety of model types, whereas a *t*-test is simply one special case of regression models. So, it amounts to exactly the same thing: we're comparing a model ($H_1$) that suggests that `Duration` has an effect (as measured by the effect size on the outcome, change in FSIQ), with a model that suggests there is no effect of this grouping (i.e., the null hypothesis, $H_0$).   
+
+```{r}
+# FSIQ alt and null models (same as implied by t-test)
+FSIQ_lm1 = lm(FSIQD ~ Duration, data = DataWideD)
+FSIQ_lm0 = lm(FSIQD ~ 1, data = DataWideD) 
+
+# Make list of candidate models
+FSIQ_candmodels = list(FSIQ_lm1, FSIQ_lm0)
+
+# Names for alt and null models
+mnames = c("H1", "H0")
+```
+
+The I-T results are typically presented as a table; `aictab` is the function to create it.  
+
+```{r eval = FALSE}
+# AIC table 
+aictab(cand.set = FSIQ_candmodels, modnames = mnames)
+```
+
+```{r echo = FALSE}
+# Make AIC table object
+FSIQ_IT = aictab(cand.set = FSIQ_candmodels, modnames = mnames)
+
+kable(FSIQ_IT, digits = 2)
+```
+
+Our primary outcome of interest is the `AICcWt` column: it tells us the probability of that model being the best model of the model set. Here, it suggests that there is about a 65% chance that there is an effect of `Duration`, and a 35% chance that there is no effect. So, we have a stronger conclusion than with frequentist methods, but a weaker one as compared with Bayesian methods. 
+
+Dividing one model's AICc weight by another's gives you the relative likelihood of that model, e.g., $H_1$ is `r FSIQ_IT[1,6]` / `r FSIQ_IT[2,6]` = (`r txtRound((FSIQ_IT[1,6] / FSIQ_IT[2,6]) , 1)` times more likely than $H_0$.    
+
+Part of the additional beauty of the information-theoretic approach is that you can incorporate the model uncertainty into your estimate of the effect size. This is called "model averaging" because you are using likelihood-weighted averages to incorporate uncertainty in the estimate of the effect size. 
+
+We can do it with the model parameters using the `modavg` function to see how uncertainty changes the expected value of the outcome (as well as the confidence intervals on the estimated parameters):
+
+```{r}
+# Do model averaging on regression coefficient results
+FSIQ_lm_intercept_avg = modavg(parm = "(Intercept)", cand.set = FSIQ_candmodels,
+                            modnames = mnames)
+
+FSIQ_lm_shorteffect_avg = modavg(parm = "DurationShort", cand.set =
+                            FSIQ_candmodels, modnames = mnames)
+
+FSIQ_lm_intercept_avg
+FSIQ_lm_shorteffect_avg
+```
+
+
+More usefully to our end goal, the `modavgEffect` function gives you the model averaged effect size and its confidence interval, without having to plug through the regression equation manually. This function needs a data frame for the two groups' names, because in essence is it "predicting" the expected value accounting for model uncertainty. 
+
+
+```{r}
+# Model averaged effect size
+modavgEffect(cand.set = FSIQ_candmodels, modnames = mnames, newdata = 
+             data.frame(Duration = c("Short", "Long")))
+```
+
+\  
+
+We might summarize the I-T results as something like |D| = 9 (95% CI: -7.8, 25.2) and note that there is 35% chance $H_0$ is the best model, though $H_1$ is 1.8x more likely than $H_0$. We'd also want to create a graph like the one in the *Effect Sizes* section, using the model averaged effect size for the right-side graph. (But as I write this, it's quite late on the night before I'm teaching this workshop, so you'll just have to imagine it!)   
+
+
+\  
+
+*** 
+
+#### Exercise 7 
+
+Use I-T methods to determine whether there is an effect of `Duration` on nonverbal IQ outcomes. If the null model is less likely than the model with `Duration`, model average the effect size as well.  
+
+```{r include = FALSE}
+# Ex 7
+NVIQ_lm1 = lm(NVIQD ~ Duration, data = DataWideNVIQ)
+NVIQ_lm0 = lm(NVIQD ~ 1, data = DataWideNVIQ) 
+
+# Make list of candidate models
+NVIQ_candmodels = list(NVIQ_lm1, NVIQ_lm0)
+
+# Names for alt and null models
+mnames = c("H1", "H0")
+aictab(cand.set = NVIQ_candmodels, modnames = mnames)
+
+modavgEffect(cand.set = NVIQ_candmodels, modnames = mnames, newdata = 
+             data.frame(Duration = c("Short", "Long")))
+```
+
+*** 
+
+\
+
+\  
+
+# Discussion
+
+## How best to infer?
+
+- Frequentism  
+    - Fisher: *p* is an evidence probability. Invalid.   
+    - Neyman-Pearson (N-P): $\alpha$ is an error probability. Valid, but limited usefulness.    
+    - NHST: an incoherent hybrid where you want *p* < $\alpha$. *Don't do this, ever again.*    
+- Effect sizes and CIs/HDIs  
+- Bayesian  
+- Information-theoretic  
+
+There are three different general questions one can ask given a data set [(Royall 1997](http://www.amazon.com/Statistical-Evidence-Likelihood-Monographs-Probability/dp/0412044110), [(Dienes 2008)](http://www.amazon.com/Understanding-Psychology-Science-Introduction-Statistical/dp/023054231X):
+
+1. What should I do?
+2. What should I believe?
+3. How should I treat the data as evidence for one theory rather than another?
+
+These are different goals, and each has its own statistical toolset.  
+
+***In all cases***, you should report and interpret effect sizes, as these are the quantities of scientific and practical interest. Then, depending on the type of inferential question you want to answer, you can determine which statistical paradigm is most appropriate:  
+
+1. What should I do?  
+    **Use Neyman-Pearson frequentist tools**  
+2. What should I believe?  
+    **Use Bayesian tools**  
+3. How should I treat the data as evidence for one theory rather than another?   
+    **Use information-theoretic tools**  
+
+Bayesian and frequentist approaches are fundamentally incompatible, and using both in the same study will likely get called out by reviewers. Some also feel that frequentist and I-T methods are incompatible, but there is some controversy and confusion about that.  
+
+You're generally safest if you decide *before you even start a study* what fundamental question you're trying to address, and what's already known about the topic, and pick one inferential approach. Broadly, "experimental" conditions that might help you decide could be ([Ellison et al. 2014](http://dx.doi.org/10.1890/13-1911.1)):
+
+| Example Conditions | Suggested Paradigm |
+| ------------------------- | ------------------ |
+| &bull; Processes giving rise to observed data are complex and poorly understood  &bull; Replicated experiments would be difficult or impossible to devise | Information-theoretic |
+| &bull; Relatively simple processes give rise to observed data &bull; Replicated experiments are possible &bull; Prior understanding or knowledge exists | N-P or Bayesian | 
+
+## The impact of statistical philosophy on brain surgery
+
+- **Frequentism:** the result was not statistically significant (*p* = 0.06), no graph.   
+
+- **Effect sizes w/ frequentist CIs:** |D| = 13 (90% CI: 3, 24), cool graph.
+
+- **Bayesian:** posterior |D| = 14 (90% HDI: -2, 30), 92% chance of being > 0, 83% chance of being > 5, super amazingly useful graph.  
+
+- **Information-theoretic:** evidence in data suggests that |D| = 9 (90% CI: -5, 23); 35% chance $H_0$ is best model; $H_1$ is 1.8x more likely than $H_0$, cool graph (not shown) like the effect sizes one.   
+
+\  
+
+\  
+
+***
+
+#### Exercise 8
+
+Given what we've explored today, if *you* had to decide whether to undertake brain surgery soon after diagnosis for a kid with this group's characteristics, or to wait and see if other treatments could relieve or resolve the problem, **what would you do?**
+
+***
+
+\  
+
+*~ End of file ~*
