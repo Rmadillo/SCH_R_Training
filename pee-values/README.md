@@ -5,7 +5,11 @@
 <hr>  
 <br>  
 
-<h2>Resources to accompany <i>The Only Good p-values Come from Catheters: Qualitative Philosophies and Quantitative Results in Pediatric Brain Surgery Outcomes</i>, Dwight Barry, PhD, Principal Data Scientist, Seattle Children's Hospital</h2>  
+<h2>Resources to accompany <i>The Only Good p-values Come from Catheters: Qualitative Philosophies and Quantitative Results in Pediatric Brain Surgery Outcomes</i></h2>  
+
+Dwight Barry, PhD  
+Principal Data Scientist  
+Seattle Children's Hospital  
 
 *Presented at the Advancing Analytics for Children's Hospitals conference, June 5-6, 2019, Ann & Robert H. Lurie Children’s Hospital of Chicago.*  
 
@@ -33,29 +37,35 @@ tbd
 
 - Dienes, Z. (2008). Understanding psychology as a science: An introduction to scientific and statistical inference. Macmillan International Higher Education. https://www.amazon.com/Understanding-Psychology-Science-Introduction-Statistical/dp/023054231X
 
-*Why "statistical significance" is a bad thing*  
+- Miguel A. Hernán, John Hsu & Brian Healy. (2019). A second chance to get causal inference right: A classification of data science tasks. CHANCE, 32:1, 42-49. https://arxiv.org/abs/1804.10846
+
+*Why "statistical significance" is a (very) bad thing*  
+
+- Hauer, E. (2004). The harm done by tests of significance. Accident Analysis & Prevention, 36(3), 495-500. https://statmodeling.stat.columbia.edu/wp-content/uploads/2013/03/1154-Hauer-The-harm-done-by-tests-of-significance.pdf
 
 - Ioannidis, J. P. (2005). Why most published research findings are false. PLoS medicine, 2(8), e124. https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.0020124  
 
 - Simmons, J. P., Nelson, L. D., & Simonsohn, U. (2011). False-positive psychology: Undisclosed flexibility in data collection and analysis allows presenting anything as significant. Psychological science, 22(11), 1359-1366. https://journals.sagepub.com/doi/pdf/10.1177/0956797611417632
 
+- Ziliak, S. T. (2011). Matrixx v. Siracusano and Student v. Fisher: statistical significance on trial. Significance, 8(3), 131-134. https://rss.onlinelibrary.wiley.com/doi/pdf/10.1111/j.1740-9713.2011.00511.x
+
 - Lambdin, C. (2012). Significance tests as sorcery: Science is empirical—significance tests are not. Theory & Psychology, 22(1), 67-90. http://psychology.okstate.edu/faculty/jgrice/psyc5314/SignificanceSorceryLambdin2012.pdf
 
-*Why p-values don't help AT ALL*  
+*Why p-values without significance don't help AT ALL*  
 
 - Hubbard, R., & Lindsay, R. M. (2008). Why P values are not a useful measure of evidence in statistical significance testing. Theory & Psychology, 18(1), 69-88. https://www.researchgate.net/profile/R_Murray_Lindsay/publication/240281208_Why_P_Values_Are_Not_a_Useful_Measure_of_Evidence_in_Statistical_Significance_Testing/links/543fcf100cf2fd72f99dafd5.pdf  
 
 *Being a good Frequentist*  
 
-- Frank Harrell and 33 others. (2019). Language for communicating frequentist results about treatment effects.  https://discourse.datamethods.org/t/language-for-communicating-frequentist-results-about-treatment-effects/934/21
+- Coe, R. (2002). It’s the effect size, stupid: What effect size is and why it is important. Paper presented at the British Educational Research Association annual conference (Vol. 12, p. 14). http://www.leeds.ac.uk/educol/documents/00002182.htm
 
 - Michael Höhle. (2017). Confidence Intervals without Your Collaborator's Tears. http://staff.math.su.se/hoehle/blog/2017/06/22/interpretcis.html
 
-- Ho, J., Tumkaya, T., Aryal, S., Choi, H., & Claridge-Chang, A. (2018). Moving beyond P values: Everyday data analysis with estimation plots. BioRxiv, 377978. https://www.biorxiv.org/content/10.1101/377978v2 and https://github.com/ACCLAB/dabestr
-
-- Adam Claridge-Chang and Joses Ho. (2019). Estimation Stats. https://www.estimationstats.com/
+- Ho, J., Tumkaya, T., Aryal, S., Choi, H., & Claridge-Chang, A. (2018). Moving beyond P values: Everyday data analysis with estimation plots. BioRxiv, 377978. https://www.biorxiv.org/content/10.1101/377978v2 & https://github.com/ACCLAB/dabestr
 
 - Rousselet, G., Pernet, C., & Wilcox, R. R. (2019). A practical introduction to the bootstrap: a versatile method to make inferences by using data-driven simulations. PsyArXiv. https://psyarxiv.com/h8ft7/ 
+
+- Frank Harrell and 33 others. (2019). Language for communicating frequentist results about treatment effects.  https://discourse.datamethods.org/t/language-for-communicating-frequentist-results-about-treatment-effects/934/21
 
 *An example of reinterpreting a Frequentist RCT analysis with Bayesian methods*  
 
@@ -63,15 +73,13 @@ tbd
 
 *Intro to Bayesian methods*  
 
-- Kruschke, J. K. (2013). Bayesian estimation supersedes the t test. Journal of Experimental Psychology: General, 142(2), 573-603. https://www.youtube.com/watch?v=fhw1j1Ru2i0 and http://www.indiana.edu/~kruschke/articles/Kruschke2013JEPG.pdf
-
-- Rasmus Bååth. (2012). Bayesian Estimation Supersedes the t-test (BEST) - online. http://sumsar.net/best_online/
+- Kruschke, J. K. (2013). Bayesian estimation supersedes the t test. Journal of Experimental Psychology: General, 142(2), 573-603. https://www.youtube.com/watch?v=fhw1j1Ru2i0, http://www.indiana.edu/~kruschke/articles/Kruschke2013JEPG.pdf
 
 - McElreath, R. (2015). Statistical rethinking: A Bayesian course with examples in R and Stan. Chapman and Hall/CRC. https://www.amazon.com/Statistical-Rethinking-Bayesian-Examples-Chapman/dp/1482253445/
 
 *The Information-Theoretic/Multi-model inference approach* 
 
-- David Anderson. (2007). Alternatives to a p-values in simple "t-tests". https://sites.warnercnr.colostate.edu/anderson/wp-content/uploads/sites/26/2016/11/PDF-of-t_test_ANOVA_-with-I-T_final.pdf
+- David Anderson. (2007). Alternatives to a p-value in simple "t-tests". https://sites.warnercnr.colostate.edu/anderson/wp-content/uploads/sites/26/2016/11/PDF-of-t_test_ANOVA_-with-I-T_final.pdf
 
 - Anderson, D. R. (2010). Model based inference in the life sciences: a primer on evidence. Springer Science & Business Media. https://www.amazon.com/Model-Based-Inference-Life-Sciences/dp/0387740732/  
 
@@ -85,6 +93,10 @@ tbd
 
 - JAMOVI: https://www.jamovi.org/
 
+- Adam Claridge-Chang and Joses Ho. (2019). Estimation Stats. https://www.estimationstats.com/
+
+- Rasmus Bååth. (2012). Bayesian Estimation Supersedes the t-test (BEST) - online. http://sumsar.net/best_online/
+
 *Discussions*
 
 - DataMethods blog: https://discourse.datamethods.org/
@@ -94,9 +106,9 @@ tbd
 <br>
 <hr> 
 <br> 
-
+<center>
 [![Significant](https://imgs.xkcd.com/comics/significant.png)](https://xkcd.com/882/)
-
+</center>
 <br>
 <hr> 
 <br> 
