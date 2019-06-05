@@ -15,6 +15,10 @@ Seattle Children's Hospital
 
 <h3>Link to Slides</h3>
 
+https://github.com/Rmadillo/SCH_R_Training/blob/master/pee-values/Stats%20Philosophy%20Lurie%20201906%20lo%20res.pdf
+
+<h3>Link to Code to Reproduce Analysis Shown in Slides</h3>
+
 tbd
 
 <h3>Useful Resources</h3>  
