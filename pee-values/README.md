@@ -37,7 +37,7 @@ tbd
 
 *Philosophies of statistical inference*  
 
-- Goodman, S. N. (1993). P values, hypothesis tests, and likelihood: implications for epidemiology of a neglected historical debate. American Journal of Epidemiology, 137(5), 485-496. 
+- Goodman, S. N. (1993). P values, hypothesis tests, and likelihood: implications for epidemiology of a neglected historical debate. American Journal of Epidemiology, 137(5), 485-496. https://pdfs.semanticscholar.org/7a46/007578dcfe0da282f0a6b22a47ba8b4a629a.pdf
 
 - Stephens, P. A., Buskirk, S. W., & del Rio, C. M. (2007). Inference in ecology and evolution. Trends in Ecology & Evolution, 22(4), 192-197. http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.457.424&rep=rep1&type=pdf
 
