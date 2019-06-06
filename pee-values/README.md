@@ -19,7 +19,9 @@ https://github.com/Rmadillo/SCH_R_Training/blob/master/pee-values/Stats%20Philos
 
 <h3>Link to Code to Reproduce Analysis Shown in Slides</h3>
 
-tbd
+This analysis started in 2013 or 2014, so some of the code is fairly old. But I've tested it sucessfully on R version 3.5.1 on June 6, 2019. Please report any issues, and PRs welcome!
+
+https://github.com/Rmadillo/SCH_R_Training/blob/master/pee-values/pee-values-R-code.R
 
 <h3>Useful Resources</h3>  
 
