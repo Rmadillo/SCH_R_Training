@@ -67,6 +67,8 @@ https://github.com/Rmadillo/SCH_R_Training/blob/master/pee-values/pee-values-R-c
 
 - Hubbard, R., & Lindsay, R. M. (2008). Why P values are not a useful measure of evidence in statistical significance testing. Theory & Psychology, 18(1), 69-88. https://www.researchgate.net/profile/R_Murray_Lindsay/publication/240281208_Why_P_Values_Are_Not_a_Useful_Measure_of_Evidence_in_Statistical_Significance_Testing/links/543fcf100cf2fd72f99dafd5.pdf  
 
+- Johansson, T. (2011). Hail the impossible: p‐values, evidence, and likelihood. Scandinavian Journal of Psychology, 52(2), 113-125. https://www.ncbi.nlm.nih.gov/pubmed/21077903  
+
 - Burnham, K. P., & Anderson, D. R. (2014). P values are only an index to evidence: 20th‐vs. 21st‐century statistical science. Ecology, 95(3), 627-630. https://pdfs.semanticscholar.org/ab54/a13747cbf1935926eb3853c432a2df8ab9fa.pdf
 
 *Being a good Frequentist*  
