@@ -79,15 +79,19 @@ https://github.com/Rmadillo/SCH_R_Training/blob/master/pee-values/pee-values-R-c
 
 - Ho, J., Tumkaya, T., Aryal, S., Choi, H., & Claridge-Chang, A. (2018). Moving beyond P values: Everyday data analysis with estimation plots. BioRxiv, 377978. https://www.biorxiv.org/content/10.1101/377978v2 & https://github.com/ACCLAB/dabestr
 
-- Rousselet, G., Pernet, C., & Wilcox, R. R. (2019). A practical introduction to the bootstrap: a versatile method to make inferences by using data-driven simulations. PsyArXiv. https://psyarxiv.com/h8ft7/ 
+- Rousselet, G., Pernet, C., & Wilcox, R. R. (2019). A practical introduction to the bootstrap: a versatile method to make inferences by using data-driven simulations. PsyArXiv. https://psyarxiv.com/h8ft7/
 
 - Frank Harrell and 33 others. (2019). Language for communicating frequentist results about treatment effects. Blog post and discussion. https://discourse.datamethods.org/t/language-for-communicating-frequentist-results-about-treatment-effects/934/21
 
+- Assel, M., Sjoberg, D., Elders, A., Wang, X., Huo, D., Botchway, A., Delfino, K., Fan, Y., Zhao, Z., Koyama, T., Hollenbeck, B., Qin, R., Zahnd, W., Zabor, E., Kattan, M., Vickers, A. (2019). Guidelines for reporting of statistics for clinical research in urology. BJU international, 123(3), 401-410. https://onlinelibrary.wiley.com/doi/full/10.1111/bju.14640
+
 *Intro to Bayesian methods*  
+
+- Kruschke, J. K., & Liddell, T. M. (2018). Bayesian data analysis for newcomers. Psychonomic bulletin & review, 25(1), 155-177. https://link.springer.com/article/10.3758/s13423-017-1272-1
 
 - Kruschke, J. K. (2013). Bayesian estimation supersedes the t test. Journal of Experimental Psychology: General, 142(2), 573-603. https://www.youtube.com/watch?v=fhw1j1Ru2i0, http://www.indiana.edu/~kruschke/articles/Kruschke2013JEPG.pdf
 
-- McElreath, R. (2015). Statistical rethinking: A Bayesian course with examples in R and Stan. Chapman and Hall/CRC. https://www.amazon.com/Statistical-Rethinking-Bayesian-Examples-Chapman/dp/1482253445/
+- McElreath, R. (2015). Statistical rethinking: A Bayesian course with examples in R and Stan. Chapman and Hall/CRC. https://www.amazon.com/Statistical-Rethinking-Bayesian-Examples-Chapman/dp/1482253445/, https://www.youtube.com/playlist?list=PLDcUM9US4XdNM4Edgs7weiyIguLSToZRI (If you're going to choose just one reference to (re)learn stats, this should be it.)
 
 - Ryan, E. G., Harrison, E. M., Pearse, R. M., & Gates, S. (2019). Perioperative haemodynamic therapy for major gastrointestinal surgery: the effect of a Bayesian approach to interpreting the findings of a randomised controlled trial. BMJ Open, 9(3), e024256. https://bmjopen.bmj.com/content/9/3/e024256
 
@@ -104,6 +108,10 @@ https://github.com/Rmadillo/SCH_R_Training/blob/master/pee-values/pee-values-R-c
 *Model selection and model averaging after you've discarded Frequentism*  
 
 - Posada, D., & Buckley, T. R. (2004). Model selection and model averaging in phylogenetics: advantages of Akaike information criterion and Bayesian approaches over likelihood ratio tests. Systematic biology, 53(5), 793-808. https://academic.oup.com/sysbio/article/53/5/793/2842928
+
+*Pushing back against bad peer-review/editorial feedback on statistic*
+
+- https://discourse.datamethods.org/t/reference-collection-to-push-back-against-common-statistical-myths/1787
 
 *SPSS-like GUIs that provide more modern stats methods for those who don't code*  
 
